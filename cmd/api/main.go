@@ -1,0 +1,55 @@
+package main
+
+import (
+	"context"
+	"os"
+	"time"
+
+	"github.com/Agmer17/srd_lab_creative/internal/bootstrap"
+	"github.com/Agmer17/srd_lab_creative/pkg"
+	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/joho/godotenv"
+)
+
+func main() {
+	err := godotenv.Load()
+	if err != nil {
+		panic("COULDN'T FIND OR READ THE ENV : " + err.Error())
+	}
+
+	googleClientId := os.Getenv("GOOGLE_OAUTH_CLIENT")
+	googleClientSecret := os.Getenv("GOOGLE_OAUTH_SECRET")
+	databaseUrl := os.Getenv("DATABASE_URL")
+	jwtSecret := os.Getenv("JWT_SECRET")
+
+	pkg.JwtInit(jwtSecret)
+
+	mainAppCtx := context.Background()
+
+	// database pool and connection test!
+	config, err := pgxpool.ParseConfig(databaseUrl)
+	if err != nil {
+		panic("COULDN'T SETUP THE DATABASE : " + err.Error())
+	}
+	config.MaxConns = 15
+	config.MinConns = 3
+	config.MaxConnIdleTime = 20 * time.Minute
+	config.MaxConnLifetime = 10 * time.Minute
+
+	pool, err := pgxpool.NewWithConfig(mainAppCtx, config)
+	if err != nil {
+		panic("COULDN'T SETUP THE DATABASE : " + err.Error())
+	}
+
+	err = pool.Ping(mainAppCtx)
+	if err != nil {
+		panic("DB CONNECTION FAILED : " + err.Error())
+	}
+	// =================================
+
+	r := gin.Default()
+	app := bootstrap.NewApp(r, googleClientId, googleClientSecret, pool)
+	app.Run()
+
+}

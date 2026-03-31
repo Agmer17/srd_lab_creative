@@ -1,0 +1,34 @@
+version: "2"
+sql:
+  - engine: "postgresql"
+    schema: "./internal/db/schema.sql"
+    queries: "./internal/db/queries"
+    gen:
+      go:
+        package: "sqlcgen"
+        out: "./internal/db/sqlcgen"
+        sql_package: "pgx/v5"
+        emit_pointers_for_null_types: true
+        overrides:
+          - db_type: "uuid"
+            go_type:
+              import: "github.com/google/uuid"
+              type: "UUID"
+
+          - db_type: "timestamptz"
+            go_type:
+              import: "time"
+              type: "Time"
+
+          - db_type: "timestamptz"
+            nullable: true
+            go_type:
+              import: "time"
+              type: "Time"
+              pointer: true
+          
+          - db_type: "global_role_enum"
+            go_type : "string"
+          
+          - db_type: "user_gender"
+            go_type : "string"
