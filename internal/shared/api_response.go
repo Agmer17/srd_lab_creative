@@ -3,7 +3,7 @@ package shared
 type SuccessResponse struct {
 	Code    int    `json:"-"`
 	Message string `json:"message"`
-	Data    string `json:"data"`
+	Data    any    `json:"data"`
 }
 
 type ErrorResponse struct {
@@ -15,5 +15,14 @@ func NewErrorResponse(code int, err any) *ErrorResponse {
 	return &ErrorResponse{
 		Code:  code,
 		Error: err,
+	}
+}
+
+func NewSuccessResponse(code int, message string, data any) SuccessResponse {
+
+	return SuccessResponse{
+		Code:    code,
+		Message: message,
+		Data:    data,
 	}
 }

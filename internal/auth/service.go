@@ -51,29 +51,29 @@ func (as *AuthService) GetLoginGoogleUrl() (string, *shared.ErrorResponse) {
 
 }
 
-func (as *AuthService) AuthenticateGoogleUser(ctx context.Context, code string) (a string, r string, svcErr *shared.ErrorResponse) {
+func (as *AuthService) AuthenticateGoogleUser(ctx context.Context, code string) (r string, svcErr *shared.ErrorResponse) {
 
 	t, err := as.OauthConfig.Exchange(ctx, code)
 	if err != nil {
-		return "", "", shared.NewErrorResponse(500, "something went wrong with the server")
+		return "", shared.NewErrorResponse(500, "something went wrong with the server")
 	}
 
 	client := as.OauthConfig.Client(ctx, t)
 	resp, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
 	if err != nil {
-		return "", "", shared.NewErrorResponse(500, "something went wrong with the server")
+		return "", shared.NewErrorResponse(500, "something went wrong with the server")
 	}
 
 	defer resp.Body.Close()
 
 	var googleUser googleUserResponse
 	if err := json.NewDecoder(resp.Body).Decode(&googleUser); err != nil {
-		return "", "", shared.NewErrorResponse(500, "failed to decode user data")
+		return "", shared.NewErrorResponse(500, "failed to decode user data")
 	}
 
 	existingData, isExist, err := as.repo.ExistByProviderId(ctx, googleUser.ID, googleProvider)
 	if err != nil && !errors.Is(err, errAccountNotFound) {
-		return "", "", shared.NewErrorResponse(500, "something wrong with the server "+err.Error())
+		return "", shared.NewErrorResponse(500, "something wrong with the server "+err.Error())
 	}
 
 	if !isExist {
@@ -86,52 +86,45 @@ func (as *AuthService) AuthenticateGoogleUser(ctx context.Context, code string) 
 		})
 
 		if err != nil {
-			return "", "", shared.NewErrorResponse(500, "something wrong with the server"+err.Error())
-		}
-
-		accessToken, err := pkg.GenerateToken(newData.ID, newData.GlobalRole, 12)
-		if err != nil {
-			log.Fatal("COULDN'T GENERATE THE TOKEN! PANIC! " + err.Error())
-			return "", "", shared.NewErrorResponse(500, "something wrong with the server"+err.Error())
+			return "", shared.NewErrorResponse(500, "something wrong with the server"+err.Error())
 		}
 
 		refreshToken, err := pkg.GenerateTokenNoRole(newData.ID, 12)
 		if err != nil {
 			log.Fatal("COULDN'T GENERATE THE TOKEN! PANIC! " + err.Error())
-			return "", "", shared.NewErrorResponse(500, "something wrong with the server"+err.Error())
+			return "", shared.NewErrorResponse(500, "something wrong with the server"+err.Error())
 		}
 
-		return accessToken, refreshToken, nil
-	}
-
-	accessToken, err := pkg.GenerateToken(existingData.UserId, existingData.Role, 12)
-	if err != nil {
-		log.Fatal("COULDN'T GENERATE THE TOKEN! PANIC! " + err.Error())
-		return "", "", shared.NewErrorResponse(500, "something wrong with the server"+err.Error())
+		return refreshToken, nil
 	}
 
 	refreshToken, err := pkg.GenerateTokenNoRole(existingData.UserId, 12)
 	if err != nil {
 		log.Fatal("COULDN'T GENERATE THE TOKEN! PANIC! " + err.Error())
-		return "", "", shared.NewErrorResponse(500, "something wrong with the server"+err.Error())
+		return "", shared.NewErrorResponse(500, "something wrong with the server"+err.Error())
 	}
 
-	return accessToken, refreshToken, nil
+	return refreshToken, nil
 }
 
-func (as *AuthService) GetRefreshSession(ctx context.Context, userId uuid.UUID) (string, *shared.ErrorResponse) {
+func (as *AuthService) GetRefreshSession(ctx context.Context, userId uuid.UUID) (refresSessionResponse, *shared.ErrorResponse) {
 
 	userData, err := as.repo.GetUserById(ctx, userId)
 	if err != nil {
 
 		if errors.Is(err, errAccountNotFound) {
-			return "", shared.NewErrorResponse(404, "no account with this id found!")
+			return refresSessionResponse{}, shared.NewErrorResponse(404, "no account with this id found!")
 		}
 
-		return "", shared.NewErrorResponse(500, "something wrong with the server"+err.Error())
+		return refresSessionResponse{}, shared.NewErrorResponse(500, "something wrong with the server"+err.Error())
 	}
 
 	accessToken, err := pkg.GenerateToken(userData.ID, userData.GlobalRole, 12)
 
-	return accessToken, nil
+	return refresSessionResponse{
+		AccessToken: accessToken,
+		Id:          userData.ID,
+		Role:        userData.GlobalRole,
+		Avatar:      *userData.ProfilePicture,
+	}, nil
 }

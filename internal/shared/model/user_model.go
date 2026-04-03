@@ -38,6 +38,7 @@ func MapToUserModel(gen sqlcgen.User) User {
 		CreatedAt:      gen.CreatedAt,
 		UpdatedAt:      gen.UpdatedAt,
 		DeletedAt:      gen.DeletedAt,
+		Gender:         gen.Gender,
 	}
 }
 

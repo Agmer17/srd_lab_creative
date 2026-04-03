@@ -1,10 +1,10 @@
 package bootstrap
 
 import (
-	"fmt"
-
 	"github.com/Agmer17/srd_lab_creative/internal/auth"
 	"github.com/Agmer17/srd_lab_creative/internal/db/sqlcgen"
+	"github.com/Agmer17/srd_lab_creative/internal/projectrole"
+	"github.com/Agmer17/srd_lab_creative/internal/user"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -24,9 +24,17 @@ func NewApp(router *gin.Engine, googleClient string, googleSecret string, pool *
 	// setup service
 	serviceConfigs := NewServiceConfigs(googleClient, googleSecret, repoConfigs)
 
-	// generate all handler
+	// generate sama daftarin ke router
 	authHandler := auth.NewAuthHandler(serviceConfigs.AuthService)
-	SetupRoutes(router, authHandler)
+	userHandler := user.NewUserHandler(serviceConfigs.UserService)
+	projectRoleHandler := projectrole.NewProjectRoleHandler(serviceConfigs.ProjectRoleService)
+
+	SetupRoutes(
+		router,
+		authHandler,
+		userHandler,
+		projectRoleHandler,
+	)
 
 	return &App{
 		Router:       router,
@@ -36,6 +44,5 @@ func NewApp(router *gin.Engine, googleClient string, googleSecret string, pool *
 }
 
 func (a *App) Run() {
-	fmt.Println("Server berjalan di port 80\n\n\n\n")
 	a.Router.Run("0.0.0.0:80")
 }

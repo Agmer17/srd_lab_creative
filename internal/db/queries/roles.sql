@@ -6,14 +6,14 @@ RETURNING *;
 -- name: GetRoleById :one
 SELECT * FROM roles
 WHERE id = sqlc.arg(id);
- 
--- name: GetRoleByName :one
-SELECT * FROM roles
-WHERE name = sqlc.arg(name);
- 
+
 -- name: GetAllRoles :many
 SELECT * FROM roles
 ORDER BY created_at DESC;
+
+-- name: GetRoleByName :one
+SELECT * FROM roles
+WHERE name = sqlc.arg(name);
  
 -- name: SearchRoles :many
 SELECT * FROM roles
@@ -31,3 +31,5 @@ RETURNING *;
 -- name: DeleteRole :exec
 DELETE FROM roles
 WHERE id = sqlc.arg(id);
+
+

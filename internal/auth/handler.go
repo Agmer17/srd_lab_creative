@@ -9,6 +9,7 @@ import (
 )
 
 const oneWeek = 7 * 24 * 60 * 60
+const frontEndRedirect = "http://localhost:5173/account/me"
 
 type AuthHandler struct {
 	service *AuthService
@@ -33,14 +34,13 @@ func (ah *AuthHandler) HandleGoogleCallback(c *gin.Context) {
 
 	code := c.Query("code")
 
-	accessToken, refreshToken, err := ah.service.AuthenticateGoogleUser(c.Request.Context(), code)
+	refreshToken, err := ah.service.AuthenticateGoogleUser(c.Request.Context(), code)
 	if err != nil {
 		c.JSON(err.Code, err)
 		return
 	}
 
 	c.SetSameSite(http.SameSiteLaxMode)
-
 	c.SetCookie(
 		"refresh_token",
 		refreshToken,
@@ -51,8 +51,7 @@ func (ah *AuthHandler) HandleGoogleCallback(c *gin.Context) {
 		true,
 	)
 
-	// GANTI INI SAMA REDIRECT FE NANTINYA!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	c.JSON(200, shared.SuccessResponse{Code: 200, Message: "successfully login with google", Data: accessToken})
+	c.Redirect(http.StatusTemporaryRedirect, frontEndRedirect)
 }
 
 func (ah *AuthHandler) LogoutHandler(c *gin.Context) {
@@ -79,13 +78,13 @@ func (ah *AuthHandler) HandleRefreshSession(c *gin.Context) {
 		c.JSON(401, "no cookies found! can't refresh the current session!")
 	}
 
-	accessToken, err := ah.service.GetRefreshSession(c.Request.Context(), userId)
+	data, err := ah.service.GetRefreshSession(c.Request.Context(), userId)
 	if err != nil {
 		c.JSON(err.Code, err)
 		return
 	}
 
-	c.JSON(200, shared.SuccessResponse{Code: 200, Message: "refreshing the session successfully", Data: accessToken})
+	c.JSON(200, shared.NewSuccessResponse(200, "successfully refreshing the session", data))
 }
 
 func (ah *AuthHandler) RegisterRoutes(r gin.IRouter) {
@@ -96,6 +95,7 @@ func (ah *AuthHandler) RegisterRoutes(r gin.IRouter) {
 	}
 
 	privateAuth := r.Group("/auth")
+	privateAuth.Use(middleware.AuthMiddlewareFromCookie())
 	{
 		privateAuth.GET("/logout", ah.LogoutHandler)
 		privateAuth.GET("/refresh-session", ah.HandleRefreshSession)

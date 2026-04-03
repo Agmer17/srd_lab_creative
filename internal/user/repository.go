@@ -92,3 +92,15 @@ func (ur *UserRepository) UpdateUser(ctx context.Context, data UpdateUserDto, id
 
 	return model.MapToUserModel(updatedData), nil
 }
+
+func (ur *UserRepository) GetById(ctx context.Context, id uuid.UUID) (model.User, error) {
+	data, err := ur.db.GetUserById(ctx, id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return model.User{}, errNoUserFound
+		}
+
+		return model.User{}, err
+	}
+	return model.MapToUserModel(data), nil
+}

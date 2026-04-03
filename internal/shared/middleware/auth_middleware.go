@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"errors"
-	"fmt"
 	"slices"
 	"strings"
 
@@ -24,13 +23,12 @@ const (
 func getAccessToken(header string) (string, error) {
 
 	if header == "" {
-		fmt.Println("\n\n\n\n\n kosong headernya : ", header)
-		return "", errors.New("Harap login terlebih dahulu sebelum mengakses fitur ini")
+		return "", errors.New("no header found")
 	}
 	parts := strings.SplitN(header, " ", 2)
 
 	if len(parts) != 2 || parts[0] != "Bearer" {
-		return "", errors.New("Harap login terlebih dahulu sebelum mengakses fitur ini")
+		return "", errors.New("invalid header requests")
 	}
 
 	return parts[1], nil
@@ -81,13 +79,13 @@ func RoleMiddleware(allowedRoles ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		role, ok := GetRole(c)
 		if !ok {
-			c.AbortWithStatusJSON(403, "you doesn't have access to this feature")
+			c.AbortWithStatusJSON(403, shared.NewErrorResponse(500, "you doesn't have access to this feature"))
 			return
 		}
 
 		isAllowed := slices.Contains(allowedRoles, role)
 		if !isAllowed {
-			c.AbortWithStatusJSON(403, "you doesn't have access to this feature")
+			c.AbortWithStatusJSON(403, shared.NewErrorResponse(500, "you doesn't have access to this feature"))
 			return
 		}
 

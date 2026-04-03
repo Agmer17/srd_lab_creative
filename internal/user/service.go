@@ -78,3 +78,15 @@ func (us *UserService) DeleteUser(ctx context.Context, userId uuid.UUID) *shared
 	}
 	return nil
 }
+
+func (us *UserService) GetUserById(ctx context.Context, id uuid.UUID) (model.User, *shared.ErrorResponse) {
+	data, err := us.repo.GetById(ctx, id)
+	if err != nil {
+		if errors.Is(err, errNoUserFound) {
+			return model.User{}, shared.NewErrorResponse(404, "no user with this id found!")
+		}
+		return model.User{}, shared.NewErrorResponse(500, "something wrong while getting user data! try again another time")
+	}
+
+	return data, nil
+}
