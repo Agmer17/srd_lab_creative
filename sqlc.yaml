@@ -32,3 +32,9 @@ sql:
           
           - db_type: "user_gender"
             go_type : "string"
+          
+          - db_type: "pg_catalog.numeric"
+            go_type : "float64"
+          
+          - db_type: "product_status_enum"
+            go_type : "string"

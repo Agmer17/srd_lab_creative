@@ -51,7 +51,13 @@ func (ah *AuthHandler) HandleGoogleCallback(c *gin.Context) {
 		true,
 	)
 
-	c.Redirect(http.StatusTemporaryRedirect, frontEndRedirect)
+	// buat tetsting di postman or smth, masukin ini ke cookie
+	// or smth, terus minta refresh session ke /auth/refresh-session biar dapet access tokennya
+	// access tokennya di set ke header Bearer <token deez nut>
+	c.JSON(200, refreshToken)
+
+	// kalo production ini uncomment duls
+	// c.Redirect(http.StatusTemporaryRedirect, frontEndRedirect)
 }
 
 func (ah *AuthHandler) LogoutHandler(c *gin.Context) {
@@ -94,7 +100,7 @@ func (ah *AuthHandler) RegisterRoutes(r gin.IRouter) {
 		auth.GET("/google-callback", ah.HandleGoogleCallback)
 	}
 
-	privateAuth := r.Group("/auth")
+	privateAuth := auth.Group("/")
 	privateAuth.Use(middleware.AuthMiddlewareFromCookie())
 	{
 		privateAuth.GET("/logout", ah.LogoutHandler)

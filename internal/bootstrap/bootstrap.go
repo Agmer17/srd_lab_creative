@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"github.com/Agmer17/srd_lab_creative/internal/auth"
+	"github.com/Agmer17/srd_lab_creative/internal/category"
 	"github.com/Agmer17/srd_lab_creative/internal/db/sqlcgen"
 	"github.com/Agmer17/srd_lab_creative/internal/projectrole"
 	"github.com/Agmer17/srd_lab_creative/internal/user"
@@ -28,12 +29,14 @@ func NewApp(router *gin.Engine, googleClient string, googleSecret string, pool *
 	authHandler := auth.NewAuthHandler(serviceConfigs.AuthService)
 	userHandler := user.NewUserHandler(serviceConfigs.UserService)
 	projectRoleHandler := projectrole.NewProjectRoleHandler(serviceConfigs.ProjectRoleService)
+	categoryHandler := category.NewCategoryHandler(serviceConfigs.CategoryService)
 
 	SetupRoutes(
 		router,
 		authHandler,
 		userHandler,
 		projectRoleHandler,
+		categoryHandler,
 	)
 
 	return &App{
