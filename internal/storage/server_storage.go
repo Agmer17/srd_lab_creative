@@ -1,7 +1,9 @@
 package storage
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -11,6 +13,7 @@ import (
 
 	"github.com/Agmer17/srd_lab_creative/pkg"
 	"github.com/disintegration/imaging"
+	"golang.org/x/sync/errgroup"
 )
 
 var errorsFileNotSupported = errors.New("This file type currently not supported")
@@ -47,6 +50,7 @@ type FileStorage struct {
 	Root        string
 	PublicPath  string
 	PrivatePath string
+	maxWorkers  int
 }
 
 func mustGetProjectRoot() string {
@@ -63,7 +67,7 @@ func mustCreateDir(path string) {
 	}
 }
 
-func NewFileStorage() *FileStorage {
+func NewFileStorage(worker int) *FileStorage {
 	root := mustGetProjectRoot()
 	uploadsDir := filepath.Join(root, "uploads")
 	privateDir := filepath.Join(uploadsDir, "private")
@@ -72,10 +76,19 @@ func NewFileStorage() *FileStorage {
 	mustCreateDir(privateDir)
 	mustCreateDir(publicDir)
 
+	var maxWork int = 0
+
+	if worker <= 0 {
+		maxWork = 5
+	} else {
+		maxWork = worker
+	}
+
 	fileStoreage := FileStorage{
 		Root:        root,
 		PublicPath:  publicDir,
 		PrivatePath: privateDir,
+		maxWorkers:  maxWork,
 	}
 
 	return &fileStoreage
@@ -142,6 +155,14 @@ func (storage *FileStorage) compressImage(src multipart.File, dst io.Writer) err
 }
 
 func (storage *FileStorage) SavePublicFile(fileHeader *multipart.FileHeader, place ...string) (string, error) {
+	return storage.saveFile(storage.PublicPath, fileHeader, place...)
+}
+
+func (storage *FileStorage) SavePrivateFile(fileHeader *multipart.FileHeader, place ...string) (string, error) {
+	return storage.saveFile(storage.PrivatePath, fileHeader, place...)
+}
+
+func (storage *FileStorage) saveFile(basePath string, fileHeader *multipart.FileHeader, place ...string) (string, error) {
 	f, err := fileHeader.Open()
 	if err != nil {
 		return "", err
@@ -153,17 +174,17 @@ func (storage *FileStorage) SavePublicFile(fileHeader *multipart.FileHeader, pla
 		return "", err
 	}
 
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
+		return "", err
+	}
+
 	filename, err := pkg.GenerateSecureString(40)
 	if err != nil {
 		return "", err
 	}
-	filename = filename + ext
+	filename += ext
 
-	parts := []string{
-		storage.PublicPath,
-	}
-
-	parts = append(parts, place...)
+	parts := append([]string{basePath}, place...)
 	parts = append(parts, filename)
 
 	fullPath := filepath.Join(parts...)
@@ -176,23 +197,73 @@ func (storage *FileStorage) SavePublicFile(fileHeader *multipart.FileHeader, pla
 	if err != nil {
 		return "", err
 	}
-
 	defer dst.Close()
+
 	if mediaType == TypeImage {
-		err := storage.compressImage(f, dst)
-		if err != nil {
+		if err := storage.compressImage(f, dst); err != nil {
+			return "", err
+		}
+	} else {
+		if _, err := io.Copy(dst, f); err != nil {
 			return "", err
 		}
 	}
-	if _, err := io.Copy(dst, f); err != nil {
-		return "", err
-	}
+
 	return filename, nil
 }
 
-func (storage *FileStorage) SavePrivateFile(fileheader multipart.FileHeader, place ...string) (string, error) {
+func (storage *FileStorage) SaveAllPublicFile(ctx context.Context, ls []*multipart.FileHeader, place ...string) ([]string, error) {
+	return storage.saveAllFiles(ctx, storage.PublicPath, ls, place...)
+}
 
-	// todo : do some shit
-	// ot do me instead
-	return "", nil
+func (storage *FileStorage) SaveAllPrivateFile(ctx context.Context, ls []*multipart.FileHeader, place ...string) ([]string, error) {
+	return storage.saveAllFiles(ctx, storage.PrivatePath, ls, place...)
+}
+
+func (storage *FileStorage) saveAllFiles(ctx context.Context, basePath string, ls []*multipart.FileHeader, place ...string) ([]string, error) {
+	if len(ls) == 0 {
+		return []string{}, nil
+	}
+
+	g, ctx := errgroup.WithContext(ctx)
+	semaphore := make(chan struct{}, storage.maxWorkers)
+	filenames := make([]string, len(ls))
+
+	for i, fh := range ls {
+		g.Go(func() error {
+			select {
+			case semaphore <- struct{}{}:
+				defer func() { <-semaphore }()
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+
+			filename, err := storage.saveFile(basePath, fh, place...)
+			if err != nil {
+				return err
+			}
+
+			filenames[i] = filename
+			return nil
+		})
+	}
+
+	if err := g.Wait(); err != nil {
+		for _, filename := range filenames {
+			if filename == "" {
+				continue
+			}
+
+			parts := make([]string, 0, 1+len(place)+1)
+			parts = append(parts, basePath)
+			parts = append(parts, place...)
+			parts = append(parts, filename)
+			if err := os.Remove(filepath.Join(parts...)); err != nil {
+				fmt.Println("error while cleaning up the files : ", err.Error())
+			}
+		}
+		return nil, err
+	}
+
+	return filenames, nil
 }
