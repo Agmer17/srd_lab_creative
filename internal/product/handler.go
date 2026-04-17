@@ -38,11 +38,11 @@ func(pth *ProductHandler) HandleGetProductById(c *gin.Context){
 	
 	data,getErr := pth.svc.GetProductById(c,id);
 	if getErr != nil {
-		c.JSON(getErr.Code, getErr)
+		c.JSON(getErr.Code, getErr);
 		return
 	}
 
-	c.JSON(200, shared.NewSuccessResponse(200, "succesffuly getting the product data", data))
+	c.JSON(200, shared.NewSuccessResponse(200, "succesffuly getting the product data", data));
 }
 
 func (pth *ProductHandler) PostCreateProduct(c *gin.Context){
@@ -95,6 +95,19 @@ func(pth *ProductHandler) PatchUpdateProduct(c *gin.Context){
 
 }
 
+func (pth *ProductHandler) HandleGetProductBySlug(c *gin.Context){
+	slug := c.Param("slug");
+
+	data, err := pth.svc.GetProductBySlug(c,slug);
+	if err != nil{
+		c.JSON(err.Code,err);
+		return
+	}
+	
+	c.JSON(200, shared.NewSuccessResponse(200, "succesffuly getting the product data", data));
+
+}
+
 func(pth *ProductHandler) DeleteProductHandler(c *gin.Context){
 	path := c.Param("id");
 	id,err := uuid.Parse(path);
@@ -116,7 +129,8 @@ func(pth *ProductHandler) DeleteProductHandler(c *gin.Context){
 func(pth *ProductHandler) RegisterRoutes(r gin.IRouter){
 	productApi := r.Group("/product");
 	productApi.GET("/get-all",pth.HandleGetAllProducts);
-	productApi.GET("/id/:id",pth.HandleGetProductById);
+	// kurang nyari with slug
+	productApi.GET("/details/:slug",pth.HandleGetProductBySlug);
 
 	productAdmin := productApi.Group("/");
 	
@@ -126,5 +140,6 @@ func(pth *ProductHandler) RegisterRoutes(r gin.IRouter){
 	productAdmin.POST("/add",pth.PostCreateProduct);
 	productAdmin.PATCH("/update/:id",pth.PatchUpdateProduct);
 	productAdmin.DELETE("/delete/:id",pth.DeleteProductHandler);
+	productAdmin.GET("/id/:id",pth.HandleGetProductById);
 
 }

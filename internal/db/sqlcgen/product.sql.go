@@ -139,6 +139,29 @@ func (q *Queries) GetProductById(ctx context.Context, id uuid.UUID) (Product, er
 	return i, err
 }
 
+const getProductBySlug = `-- name: GetProductBySlug :one
+SELECT id, name, slug, description, price, status, is_featured, created_at, updated_at, deleted_at FROM products 
+WHERE slug = $1 AND deleted_at IS NULL LIMIT 1
+`
+
+func (q *Queries) GetProductBySlug(ctx context.Context, slug string) (Product, error) {
+	row := q.db.QueryRow(ctx, getProductBySlug, slug)
+	var i Product
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Slug,
+		&i.Description,
+		&i.Price,
+		&i.Status,
+		&i.IsFeatured,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
 const updateProduct = `-- name: UpdateProduct :one
 UPDATE products
 SET 

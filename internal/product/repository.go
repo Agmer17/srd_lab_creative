@@ -76,9 +76,18 @@ func (pr *ProductRepository) UpdateProduct (ctx context.Context,id uuid.UUID,req
 
 func (pr *ProductRepository) CheckProductSlugExists(ctx context.Context, slug string) (bool, error) {
 	// Menghasilkan 'true' kalau slug kembar 100% sudah beneran kepake
-	exists, err := pr.db.CheckProductSlugExists(ctx, slug)
+	exists, err := pr.db.CheckProductSlugExists(ctx, slug);
 	if err != nil {
 		return false, err
 	}
 	return exists, nil
 }
+
+func (pr *ProductRepository) GetProductBySlug (ctx context.Context, slug string) (model.Product,error){
+	data,err := pr.db.GetProductBySlug(ctx,slug);
+	if err != nil {
+		return model.Product{},err;
+	}
+	return model.MapToProductModel(data),nil;
+}
+

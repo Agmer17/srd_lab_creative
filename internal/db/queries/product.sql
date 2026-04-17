@@ -39,3 +39,7 @@ SELECT EXISTS(
     SELECT 1 FROM products 
     WHERE slug = $1 AND deleted_at IS NULL
 );
+
+-- name: GetProductBySlug :one
+SELECT * FROM products 
+WHERE slug = $1 AND deleted_at IS NULL LIMIT 1;

@@ -100,5 +100,16 @@ func (ps *ProductService) UpdateProduct (ctx context.Context,id uuid.UUID,req up
 	return data,nil;
 }
 
+func (ps *ProductService) GetProductBySlug (ctx context.Context, slug string) (model.Product, *shared.ErrorResponse){
+	data,err := ps.repo.GetProductBySlug(ctx,slug);
+	if err != nil{
+		if errors.Is(err,errProductNotFound){
+			return model.Product{},shared.NewErrorResponse(404,"No product with this slug was found");
+		}
+		return model.Product{},shared.NewErrorResponse(500, "something went wrong while checking product! try again later");
+	}
+	return data,nil;
+}
+
 
 	
