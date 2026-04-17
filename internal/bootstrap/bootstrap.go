@@ -4,6 +4,7 @@ import (
 	"github.com/Agmer17/srd_lab_creative/internal/auth"
 	"github.com/Agmer17/srd_lab_creative/internal/category"
 	"github.com/Agmer17/srd_lab_creative/internal/db/sqlcgen"
+	"github.com/Agmer17/srd_lab_creative/internal/product"
 	"github.com/Agmer17/srd_lab_creative/internal/projectrole"
 	"github.com/Agmer17/srd_lab_creative/internal/user"
 	"github.com/gin-gonic/gin"
@@ -30,6 +31,7 @@ func NewApp(router *gin.Engine, googleClient string, googleSecret string, pool *
 	userHandler := user.NewUserHandler(serviceConfigs.UserService)
 	projectRoleHandler := projectrole.NewProjectRoleHandler(serviceConfigs.ProjectRoleService)
 	categoryHandler := category.NewCategoryHandler(serviceConfigs.CategoryService)
+	productHandler := product.NewProductHandler(serviceConfigs.ProductService)
 
 	SetupRoutes(
 		router,
@@ -37,6 +39,7 @@ func NewApp(router *gin.Engine, googleClient string, googleSecret string, pool *
 		userHandler,
 		projectRoleHandler,
 		categoryHandler,
+		productHandler,
 	)
 
 	return &App{
