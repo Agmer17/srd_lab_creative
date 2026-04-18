@@ -6,6 +6,7 @@ import (
 	"github.com/Agmer17/srd_lab_creative/internal/auth"
 	"github.com/Agmer17/srd_lab_creative/internal/category"
 	"github.com/Agmer17/srd_lab_creative/internal/db/sqlcgen"
+	"github.com/Agmer17/srd_lab_creative/internal/product"
 	"github.com/Agmer17/srd_lab_creative/internal/projectrole"
 	"github.com/Agmer17/srd_lab_creative/internal/user"
 	"github.com/Agmer17/srd_lab_creative/internal/ws"
@@ -40,6 +41,7 @@ func NewApp(router *gin.Engine, googleClient string, googleSecret string, pool *
 	userHandler := user.NewUserHandler(serviceConfigs.UserService)
 	projectRoleHandler := projectrole.NewProjectRoleHandler(serviceConfigs.ProjectRoleService)
 	categoryHandler := category.NewCategoryHandler(serviceConfigs.CategoryService)
+	productHandler := product.NewProductHandler(serviceConfigs.ProductService)
 
 	// ws
 	wsHandler := ws.NewWebsocketHandler(mel)
@@ -50,7 +52,11 @@ func NewApp(router *gin.Engine, googleClient string, googleSecret string, pool *
 		userHandler,
 		projectRoleHandler,
 		categoryHandler,
+<<<<<<< HEAD
 		wsHandler,
+=======
+		productHandler,
+>>>>>>> origin/feature/crud-products
 	)
 
 	return &App{

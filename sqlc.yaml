@@ -38,3 +38,9 @@ sql:
           
           - db_type: "product_status_enum"
             go_type : "string"
+
+          - db_type: "pg_catalog.numeric"
+            nullable: true
+            go_type :
+              type: "float64"
+              pointer: true
