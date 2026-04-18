@@ -52,11 +52,8 @@ func NewApp(router *gin.Engine, googleClient string, googleSecret string, pool *
 		userHandler,
 		projectRoleHandler,
 		categoryHandler,
-<<<<<<< HEAD
 		wsHandler,
-=======
 		productHandler,
->>>>>>> origin/feature/crud-products
 	)
 
 	return &App{
