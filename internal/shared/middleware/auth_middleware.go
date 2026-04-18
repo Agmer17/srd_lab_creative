@@ -39,6 +39,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		authHeader := c.GetHeader("Authorization")
 		token, err := getAccessToken(authHeader)
 		if err != nil {
+			// fmt.Println("ERROR : ", err)
 			c.AbortWithStatusJSON(401, shared.NewErrorResponse(401, "you need to login to access this feature"))
 			return
 		}
@@ -59,6 +60,7 @@ func AuthMiddlewareFromCookie() gin.HandlerFunc {
 
 	return func(c *gin.Context) {
 		cookie, err := c.Cookie("refresh_token")
+		// fmt.Println("COOKIE : ", cookie)
 		if err != nil {
 			c.AbortWithStatusJSON(401, shared.NewErrorResponse(401, "Your session is expired. Please re-login before accessing this feature"))
 			return

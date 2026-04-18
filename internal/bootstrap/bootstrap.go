@@ -1,13 +1,17 @@
 package bootstrap
 
 import (
+	"net/http"
+
 	"github.com/Agmer17/srd_lab_creative/internal/auth"
 	"github.com/Agmer17/srd_lab_creative/internal/category"
 	"github.com/Agmer17/srd_lab_creative/internal/db/sqlcgen"
 	"github.com/Agmer17/srd_lab_creative/internal/projectrole"
 	"github.com/Agmer17/srd_lab_creative/internal/user"
+	"github.com/Agmer17/srd_lab_creative/internal/ws"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/olahol/melody"
 )
 
 type App struct {
@@ -19,11 +23,17 @@ type App struct {
 func NewApp(router *gin.Engine, googleClient string, googleSecret string, pool *pgxpool.Pool) *App {
 	db := sqlcgen.New(pool)
 
+	// setup melody
+	mel := melody.New()
+
+	mel.Upgrader.CheckOrigin = func(r *http.Request) bool {
+		return true
+	}
 	// setup reposiotry
 	repoConfigs := NewRepositoryConfigs(db)
 
 	// setup service
-	serviceConfigs := NewServiceConfigs(googleClient, googleSecret, repoConfigs)
+	serviceConfigs := NewServiceConfigs(googleClient, googleSecret, repoConfigs, mel)
 
 	// generate sama daftarin ke router
 	authHandler := auth.NewAuthHandler(serviceConfigs.AuthService)
@@ -31,12 +41,16 @@ func NewApp(router *gin.Engine, googleClient string, googleSecret string, pool *
 	projectRoleHandler := projectrole.NewProjectRoleHandler(serviceConfigs.ProjectRoleService)
 	categoryHandler := category.NewCategoryHandler(serviceConfigs.CategoryService)
 
+	// ws
+	wsHandler := ws.NewWebsocketHandler(mel)
+
 	SetupRoutes(
 		router,
 		authHandler,
 		userHandler,
 		projectRoleHandler,
 		categoryHandler,
+		wsHandler,
 	)
 
 	return &App{
