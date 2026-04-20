@@ -93,7 +93,6 @@ CREATE TABLE projects (
     end_date           TIMESTAMPTZ             NULL,
     created_at         TIMESTAMPTZ             NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at         TIMESTAMPTZ             NOT NULL DEFAULT CURRENT_TIMESTAMP
-    -- Tidak ada deleted_at: hapus project = eksplisit, cascade ke chat
 );
 
 CREATE TABLE project_members (

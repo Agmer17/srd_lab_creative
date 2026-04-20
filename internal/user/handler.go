@@ -137,6 +137,7 @@ func (uh *UserHandler) HandleGetById(c *gin.Context) {
 		c.JSON(400, shared.NewErrorResponse(400, "invalid id parameter!"))
 		return
 	}
+
 	data, getErr := uh.service.GetUserById(c.Request.Context(), userId)
 	if getErr != nil {
 		c.JSON(getErr.Code, getErr)
@@ -144,6 +145,38 @@ func (uh *UserHandler) HandleGetById(c *gin.Context) {
 	}
 
 	c.JSON(200, shared.NewSuccessResponse(200, "successfully getting the user data", data))
+
+}
+
+func (uh *UserHandler) PatchUserRole(c *gin.Context) {
+
+	param := c.Param("id")
+	userId, err := uuid.Parse(param)
+	if err != nil {
+		c.JSON(400, shared.NewErrorResponse(400, "invalid id parameter!"))
+		return
+	}
+
+	var req updateUserRoleDTO
+	if err := c.ShouldBindJSON(&req); err != nil {
+		errMap, isValid := pkg.ParseValidationErrors(err)
+
+		if isValid {
+			c.JSON(400, shared.NewErrorResponse(400, errMap))
+			return
+		}
+		c.JSON(400, shared.NewErrorResponse(400, "invalid request body"))
+		return
+	}
+
+	t, uptErr := uh.service.UpdateUserRole(c.Request.Context(), userId, req.Role)
+
+	if uptErr != nil {
+		c.JSON(uptErr.Code, uptErr)
+		return
+	}
+
+	c.JSON(200, shared.NewSuccessResponse(200, "successfully updated user role", t))
 
 }
 
@@ -163,4 +196,6 @@ func (uh *UserHandler) RegisterRoutes(r gin.IRouter) {
 	userAdminOnly.GET("/search", uh.HandleSearchUser)
 	userAdminOnly.DELETE("/delete/:id", uh.DeleteUserHandler)
 	userAdminOnly.GET("/id/:id", uh.HandleGetById)
+	userAdminOnly.PATCH("/update-role/:id", uh.PatchUserRole)
+
 }

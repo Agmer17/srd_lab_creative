@@ -3,6 +3,7 @@ package order
 import (
 	"github.com/Agmer17/srd_lab_creative/internal/shared"
 	"github.com/Agmer17/srd_lab_creative/internal/shared/middleware"
+	"github.com/Agmer17/srd_lab_creative/pkg"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -48,6 +49,13 @@ func (oh *OrderHandler) HandleGetOrderFromUsers(c *gin.Context) {
 func (oh *OrderHandler) PostCreateOrder(c *gin.Context) {
 	var req createOrderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		errMap, isValid := pkg.ParseValidationErrors(err)
+
+		if isValid {
+			c.JSON(400, shared.NewErrorResponse(400, errMap))
+			return
+		}
+
 		c.JSON(400, shared.NewErrorResponse(400, "invalid request body"))
 		return
 	}
@@ -96,11 +104,15 @@ func (oh *OrderHandler) PatchUpdateOrderStatus(c *gin.Context) {
 		return
 	}
 
-	var req struct {
-		Status string `json:"status" binding:"required"`
-	}
-
+	var req updateOrderStatusRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		errMap, isValid := pkg.ParseValidationErrors(err)
+
+		if isValid {
+			c.JSON(400, shared.NewErrorResponse(400, errMap))
+			return
+		}
+
 		c.JSON(400, shared.NewErrorResponse(400, "invalid request body"))
 		return
 	}
@@ -137,16 +149,14 @@ func (oh *OrderHandler) RegisterRoutes(r gin.IRouter) {
 	orderApi := r.Group("/orders")
 	orderApi.Use(middleware.AuthMiddleware())
 
-	// user routes
 	orderApi.GET("/my-orders", oh.HandleGetOrderFromUsers)
 	orderApi.POST("/create", oh.PostCreateOrder)
-	orderApi.GET("/:id", oh.HandleGetOrderByID)
+	orderApi.GET("/details/:id", oh.HandleGetOrderByID)
 
-	// admin routes
 	adminOrder := orderApi.Group("/")
 	adminOrder.Use(middleware.RoleMiddleware(middleware.RoleAdmin))
 
 	adminOrder.GET("/get-all", oh.HandleGetAllOrders)
-	adminOrder.PATCH("/:id/status", oh.PatchUpdateOrderStatus)
-	adminOrder.DELETE("/:id", oh.HandleDeleteOrder)
+	adminOrder.PATCH("/update/:id", oh.PatchUpdateOrderStatus)
+	adminOrder.DELETE("/delete/:id", oh.HandleDeleteOrder)
 }

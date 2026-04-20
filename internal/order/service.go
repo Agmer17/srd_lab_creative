@@ -3,6 +3,7 @@ package order
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/Agmer17/srd_lab_creative/internal/product"
 	"github.com/Agmer17/srd_lab_creative/internal/shared"
@@ -22,17 +23,19 @@ func NewOrderService(rp *OrderRepository, psvc *product.ProductService) *OrderSe
 	}
 }
 
-func (osv *OrderService) GetAllOrders(ctx context.Context, status string) ([]model.Order, *shared.ErrorResponse) {
+func (osv *OrderService) GetAllOrders(ctx context.Context, status string) ([]OrderListDTO, *shared.ErrorResponse) {
 	var tempStatus *string = nil
 	if status != "" {
 		tempStatus = &status
 	}
+
 	data, err := osv.repo.GetAllOrders(ctx, tempStatus)
 	if err != nil {
-		// fmt.Println(err)
-		return []model.Order{}, shared.NewErrorResponse(500, "something wrong while getting order data, try another time")
+		return []OrderListDTO{}, shared.NewErrorResponse(500, "something wrong while getting order data, try another time")
 	}
-	return data, nil
+
+	responseData := orderListModelToDto(data)
+	return responseData, nil
 }
 
 func (osv *OrderService) CreateOrder(ctx context.Context, productId uuid.UUID, userId uuid.UUID) (model.Order, *shared.ErrorResponse) {
@@ -49,10 +52,11 @@ func (osv *OrderService) CreateOrder(ctx context.Context, productId uuid.UUID, u
 	if err != nil {
 		return model.Order{}, shared.NewErrorResponse(500, "something wrong while creating new order try another time!")
 	}
+
 	return orderData, nil
 }
 
-func (osv *OrderService) GetAllOrderFromUser(ctx context.Context, userId uuid.UUID, status string) ([]model.Order, *shared.ErrorResponse) {
+func (osv *OrderService) GetAllOrderFromUser(ctx context.Context, userId uuid.UUID, status string) ([]OrderListDTO, *shared.ErrorResponse) {
 	var tempStatus *string = nil
 	if status != "" {
 		tempStatus = &status
@@ -60,21 +64,23 @@ func (osv *OrderService) GetAllOrderFromUser(ctx context.Context, userId uuid.UU
 
 	data, err := osv.repo.GetOrderFromUsers(ctx, userId, tempStatus)
 	if err != nil {
-		return []model.Order{}, shared.NewErrorResponse(500, "something wrong while getting the order data! try again later")
+		return []OrderListDTO{}, shared.NewErrorResponse(500, "something wrong while getting the order data! try again later")
 	}
 
-	return data, nil
+	responseData := orderListModelToDto(data)
+
+	return responseData, nil
 }
 
 func (osv *OrderService) UpdateOrderStatus(ctx context.Context, orderId uuid.UUID, status string) (model.Order, *shared.ErrorResponse) {
-
 	data, err := osv.repo.UpdateOrderStatus(ctx, orderId, status)
 	if err != nil {
+		fmt.Println(err)
 		if errors.Is(err, noOrderFound) {
 			return model.Order{}, shared.NewErrorResponse(404, "no order with this id found!")
 		}
+		return model.Order{}, shared.NewErrorResponse(500, "something wrong while trying to update order status")
 	}
-
 	return data, nil
 }
 
