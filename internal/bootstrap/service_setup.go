@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"github.com/Agmer17/srd_lab_creative/internal/auth"
 	"github.com/Agmer17/srd_lab_creative/internal/category"
+	"github.com/Agmer17/srd_lab_creative/internal/order"
 	"github.com/Agmer17/srd_lab_creative/internal/product"
 	"github.com/Agmer17/srd_lab_creative/internal/projectrole"
 	"github.com/Agmer17/srd_lab_creative/internal/user"
@@ -17,6 +18,7 @@ type ServiceConfigs struct {
 	CategoryService    *category.CategoryService
 	WebsocketHub       *ws.WebsocketHub
 	ProductService     *product.ProductService
+	OrderService       *order.OrderService
 }
 
 func NewServiceConfigs(googleClientId string, googleSecret string, rpf *RepositoryConfigs, mel *melody.Melody) *ServiceConfigs {
@@ -27,6 +29,7 @@ func NewServiceConfigs(googleClientId string, googleSecret string, rpf *Reposito
 	categoryService := category.NewCategoryService(rpf.CategoryRepository)
 	productService := product.NewProductService(rpf.ProductRepository)
 
+	orderService := order.NewOrderService(rpf.OrderRepository, productService)
 	wshub := ws.NewWebsocketHub(mel)
 
 	return &ServiceConfigs{
@@ -36,5 +39,6 @@ func NewServiceConfigs(googleClientId string, googleSecret string, rpf *Reposito
 		CategoryService:    categoryService,
 		WebsocketHub:       wshub,
 		ProductService:     productService,
+		OrderService:       orderService,
 	}
 }

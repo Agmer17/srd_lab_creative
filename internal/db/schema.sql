@@ -59,4 +59,115 @@ CREATE TABLE product_categories (
     PRIMARY KEY (product_id, category_id)
 );
 
+CREATE TABLE orders (
+    id             UUID               PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id        UUID               NOT NULL REFERENCES users(id)    ON DELETE RESTRICT,
+    product_id     UUID               NOT NULL REFERENCES products(id) ON DELETE RESTRICT,
+    ordered_price  DECIMAL(15, 2)     NOT NULL,
+    status         order_status_enum  NOT NULL DEFAULT 'pending',
+    created_at     TIMESTAMPTZ          NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at     TIMESTAMPTZ          NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at     TIMESTAMPTZ          NULL  
+);
+
+CREATE TABLE payments (
+    id                   UUID                  PRIMARY KEY DEFAULT gen_random_uuid(),
+    order_id             UUID                  NOT NULL UNIQUE REFERENCES orders(id) ON DELETE RESTRICT,
+    method               VARCHAR(100),
+    status               payment_status_enum   NOT NULL DEFAULT 'unpaid',
+    amount               DECIMAL(15, 2)        NOT NULL,
+    payment_gateway_ref  VARCHAR(255),
+    paid_at              TIMESTAMPTZ             NULL,
+    created_at           TIMESTAMPTZ             NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at           TIMESTAMPTZ             NULL  
+);
+
+CREATE TABLE projects (
+    id                 UUID                  PRIMARY KEY DEFAULT gen_random_uuid(),
+    order_id           UUID                  NOT NULL UNIQUE REFERENCES orders(id) ON DELETE RESTRICT,
+    name               VARCHAR(255)          NOT NULL,
+    description        TEXT,
+    status             project_status_enum   NOT NULL DEFAULT 'in_progress',
+    allowed_revision_count     INT                   NOT NULL DEFAULT 3,
+    actual_start_date  TIMESTAMPTZ             NULL,
+    end_date           TIMESTAMPTZ             NULL,
+    created_at         TIMESTAMPTZ             NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at         TIMESTAMPTZ             NOT NULL DEFAULT CURRENT_TIMESTAMP
+    -- Tidak ada deleted_at: hapus project = eksplisit, cascade ke chat
+);
+
+CREATE TABLE project_members (
+    id         UUID      PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID      NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    user_id    UUID      NOT NULL REFERENCES users(id)    ON DELETE CASCADE,
+    role_id    UUID      NOT NULL REFERENCES roles(id)    ON DELETE RESTRICT,
+    joined_at  TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    left_at    TIMESTAMPTZ NULL,   -- NULL = masih aktif di project
+    UNIQUE (project_id, user_id)
+);
+
+CREATE TABLE progresses (
+    id           UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id   UUID           NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    title        VARCHAR(255)   NOT NULL,
+    weight       DECIMAL(5, 2)  NOT NULL,  -- pastikan total = 100 di application layer
+    is_completed BOOLEAN        NOT NULL DEFAULT FALSE,
+    created_at   TIMESTAMPTZ      NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE revision_requests (
+    id         UUID                  PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID                  NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    title      VARCHAR(255)          NOT NULL,
+    reason     TEXT                  NOT NULL,
+    status     revision_status_enum  NOT NULL DEFAULT 'pending',
+    created_at TIMESTAMPTZ             NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE chatrooms (
+    id              UUID                PRIMARY KEY DEFAULT gen_random_uuid(),
+    type            chatroom_type_enum  NOT NULL,
+    project_id      UUID                REFERENCES projects(id) ON DELETE CASCADE,
+    participant_key VARCHAR(73)         NULL, 
+
+    created_at      TIMESTAMPTZ           NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT chk_project_chatroom
+        CHECK (
+            (type = 'project' AND project_id IS NOT NULL AND participant_key IS NULL) OR
+            (type = 'personal' AND project_id IS NULL AND participant_key IS NOT NULL)
+        ),
+
+    CONSTRAINT uq_project_chatroom  UNIQUE (project_id),
+    CONSTRAINT uq_participant_key   UNIQUE (participant_key)
+);
+
+CREATE TABLE chatroom_participants (
+    id          UUID      PRIMARY KEY DEFAULT gen_random_uuid(),
+    chatroom_id UUID      NOT NULL REFERENCES chatrooms(id) ON DELETE CASCADE,
+    user_id     UUID      NOT NULL REFERENCES users(id)     ON DELETE CASCADE,
+    joined_at   TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    left_at     TIMESTAMPTZ NULL,
+
+    UNIQUE (chatroom_id, user_id)
+);
+
+CREATE TABLE chats (
+    id          UUID      PRIMARY KEY DEFAULT gen_random_uuid(),
+    room_id     UUID      NOT NULL REFERENCES chatrooms(id) ON DELETE CASCADE,
+    sender_id   UUID      REFERENCES users(id) ON DELETE SET NULL,
+    text        TEXT,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at  TIMESTAMPTZ NULL
+);
+
+CREATE TABLE chat_medias (
+    id          UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+    chat_id     UUID          NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    file_name   VARCHAR(255)  NOT NULL,
+    media_type  VARCHAR(100),
+    size        BIGINT,
+    is_one_time BOOLEAN       NOT NULL DEFAULT FALSE,
+    created_at  TIMESTAMPTZ     NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 

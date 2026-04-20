@@ -15,6 +15,12 @@ sql:
               import: "github.com/google/uuid"
               type: "UUID"
 
+          - db_type: "uuid"
+            nullable: true
+            go_type:
+              import: "github.com/google/uuid"
+              type: "UUID"
+          
           - db_type: "timestamptz"
             go_type:
               import: "time"
@@ -38,9 +44,25 @@ sql:
           
           - db_type: "product_status_enum"
             go_type : "string"
+          
+          - db_type: "order_status_enum"
+            go_type : "string"
+          
+          - db_type: "payment_status_enum"
+            go_type : "string"
 
           - db_type: "pg_catalog.numeric"
             nullable: true
             go_type :
               type: "float64"
               pointer: true
+          
+          - column: "chatrooms.type"
+            go_type: "string"
+          
+          - db_type: "project_status_enum"
+            go_type : "string"
+
+          - db_type: "revision_status_enum"
+            go_type : "string"
+          

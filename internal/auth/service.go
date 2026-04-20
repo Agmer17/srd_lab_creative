@@ -98,7 +98,7 @@ func (as *AuthService) AuthenticateGoogleUser(ctx context.Context, code string) 
 		return refreshToken, nil
 	}
 
-	refreshToken, err := pkg.GenerateTokenNoRole(existingData.UserId, 12)
+	refreshToken, err := pkg.GenerateTokenNoRole(existingData.UserId, 168)
 	if err != nil {
 		log.Fatal("COULDN'T GENERATE THE TOKEN! PANIC! " + err.Error())
 		return "", shared.NewErrorResponse(500, "something wrong with the server"+err.Error())

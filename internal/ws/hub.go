@@ -29,31 +29,7 @@ func NewWebsocketHub(m *melody.Melody) *WebsocketHub {
 }
 
 func (hub *WebsocketHub) hubInit() {
-	hub.mel.HandleConnect(func(s *melody.Session) {
-		idStr := s.Request.Header.Get("X-User-ID")
-
-		userId, err := uuid.Parse(idStr)
-		if err != nil {
-			fmt.Println("id str : ", idStr)
-			fmt.Println("id str : ", idStr)
-
-			s.Close()
-			return
-		}
-
-		s.Set("user_id", userId)
-		room := hub.GetOrCreateRoom(userId.String())
-		room.RegisterConnection(s)
-
-		if hub.SessionRooms[s] == nil {
-			hub.SessionRooms[s] = make(map[string]bool)
-		}
-
-		hub.SessionRooms[s][userId.String()] = true
-		fmt.Println("total room created : ", len(hub.Rooms))
-		fmt.Println("total client : ", hub.mel.Len())
-	})
-
+	hub.mel.HandleConnect(hub.HandleConnectionRequest)
 	hub.mel.HandleDisconnect(hub.RemoveFromAllRooms)
 }
 
@@ -87,6 +63,31 @@ func (hub *WebsocketHub) RemoveFromAllRooms(s *melody.Session) {
 	}
 
 	delete(hub.SessionRooms, s)
-	fmt.Println("total room : ", len(hub.Rooms))
-	fmt.Println("total user : ", hub.mel.Len())
+}
+
+func (hub *WebsocketHub) HandleConnectionRequest(s *melody.Session) {
+
+	idStr := s.Request.Header.Get("X-User-ID")
+
+	userId, err := uuid.Parse(idStr)
+	if err != nil {
+		fmt.Println("id str : ", idStr)
+		fmt.Println("id str : ", idStr)
+
+		s.Close()
+		return
+	}
+
+	s.Set("user_id", userId)
+	room := hub.GetOrCreateRoom(userId.String())
+	room.RegisterConnection(s)
+
+	if hub.SessionRooms[s] == nil {
+		hub.SessionRooms[s] = make(map[string]bool)
+	}
+
+	fmt.Println("room that user join : ", room.Id)
+	fmt.Println("user id : ", userId)
+
+	hub.SessionRooms[s][userId.String()] = true
 }

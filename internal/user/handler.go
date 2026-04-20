@@ -5,6 +5,7 @@ import (
 
 	"github.com/Agmer17/srd_lab_creative/internal/shared"
 	"github.com/Agmer17/srd_lab_creative/internal/shared/middleware"
+	"github.com/Agmer17/srd_lab_creative/pkg"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -56,7 +57,13 @@ func (uh *UserHandler) HandleMyProfile(c *gin.Context) {
 func (uh *UserHandler) UpdateCurrentUser(c *gin.Context) {
 	var updatedData UpdateUserDto
 	if err := c.ShouldBindJSON(&updatedData); err != nil {
-		c.JSON(400, shared.NewErrorResponse(400, "invalid request body!"))
+		errMap, isValid := pkg.ParseValidationErrors(err)
+
+		if isValid {
+			c.JSON(400, shared.NewErrorResponse(400, errMap))
+			return
+		}
+		c.JSON(400, shared.NewErrorResponse(400, "invalid request body"))
 		return
 	}
 	myId, _ := middleware.GetUserID(c)
@@ -73,7 +80,14 @@ func (uh *UserHandler) UpdateCurrentUser(c *gin.Context) {
 func (uh *UserHandler) UpdateUserHandler(c *gin.Context) {
 	var updatedData UpdateUserDto
 	if err := c.ShouldBindJSON(&updatedData); err != nil {
-		c.JSON(400, shared.NewErrorResponse(400, "invalid request body!"))
+		errMap, isValid := pkg.ParseValidationErrors(err)
+
+		if isValid {
+			c.JSON(400, shared.NewErrorResponse(400, errMap))
+			return
+		}
+
+		c.JSON(400, shared.NewErrorResponse(400, "invalid request body"))
 		return
 	}
 
