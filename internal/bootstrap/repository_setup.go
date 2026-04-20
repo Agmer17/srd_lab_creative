@@ -4,6 +4,7 @@ import (
 	"github.com/Agmer17/srd_lab_creative/internal/auth"
 	"github.com/Agmer17/srd_lab_creative/internal/category"
 	"github.com/Agmer17/srd_lab_creative/internal/db/sqlcgen"
+	"github.com/Agmer17/srd_lab_creative/internal/order"
 	"github.com/Agmer17/srd_lab_creative/internal/product"
 	"github.com/Agmer17/srd_lab_creative/internal/projectrole"
 	"github.com/Agmer17/srd_lab_creative/internal/user"
@@ -14,7 +15,8 @@ type RepositoryConfigs struct {
 	UserRepository        *user.UserRepository
 	ProjectRoleRepository *projectrole.ProjectRoleRepository
 	CategoryRepository    *category.CategoryRepository
-	ProductRepository	  *product.ProductRepository
+	ProductRepository     *product.ProductRepository
+	OrderRepository       *order.OrderRepository
 }
 
 func NewRepositoryConfigs(q *sqlcgen.Queries) *RepositoryConfigs {
@@ -24,12 +26,14 @@ func NewRepositoryConfigs(q *sqlcgen.Queries) *RepositoryConfigs {
 	categoryRepo := category.NewCategoryRepository(q)
 	productRepo := product.NewProductRepository(q)
 
+	orderRepo := order.NewOrderRepositories(q)
 	return &RepositoryConfigs{
 		AuthRepository:        authRepo,
 		UserRepository:        userRepo,
 		ProjectRoleRepository: projectRoleRepo,
 		CategoryRepository:    categoryRepo,
 		ProductRepository:     productRepo,
+		OrderRepository:       orderRepo,
 	}
 
 }

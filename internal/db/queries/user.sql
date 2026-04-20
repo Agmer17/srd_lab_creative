@@ -26,6 +26,7 @@ SELECT
 FROM users
 WHERE provider = $1
   AND provider_user_id = $2
+  AND deleted_at IS NULL
 LIMIT 1;
  
 -- name: GetUserById :one

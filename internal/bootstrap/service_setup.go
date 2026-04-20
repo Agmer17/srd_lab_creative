@@ -3,9 +3,12 @@ package bootstrap
 import (
 	"github.com/Agmer17/srd_lab_creative/internal/auth"
 	"github.com/Agmer17/srd_lab_creative/internal/category"
+	"github.com/Agmer17/srd_lab_creative/internal/order"
 	"github.com/Agmer17/srd_lab_creative/internal/product"
 	"github.com/Agmer17/srd_lab_creative/internal/projectrole"
 	"github.com/Agmer17/srd_lab_creative/internal/user"
+	"github.com/Agmer17/srd_lab_creative/internal/ws"
+	"github.com/olahol/melody"
 )
 
 type ServiceConfigs struct {
@@ -13,10 +16,12 @@ type ServiceConfigs struct {
 	UserService        *user.UserService
 	ProjectRoleService *projectrole.ProjectRoleService
 	CategoryService    *category.CategoryService
+	WebsocketHub       *ws.WebsocketHub
 	ProductService     *product.ProductService
+	OrderService       *order.OrderService
 }
 
-func NewServiceConfigs(googleClientId string, googleSecret string, rpf *RepositoryConfigs) *ServiceConfigs {
+func NewServiceConfigs(googleClientId string, googleSecret string, rpf *RepositoryConfigs, mel *melody.Melody) *ServiceConfigs {
 
 	authService := auth.NewAuthService(googleClientId, googleSecret, rpf.AuthRepository)
 	userService := user.NewUserService(rpf.UserRepository)
@@ -24,11 +29,16 @@ func NewServiceConfigs(googleClientId string, googleSecret string, rpf *Reposito
 	categoryService := category.NewCategoryService(rpf.CategoryRepository)
 	productService := product.NewProductService(rpf.ProductRepository)
 
+	orderService := order.NewOrderService(rpf.OrderRepository, productService)
+	wshub := ws.NewWebsocketHub(mel)
+
 	return &ServiceConfigs{
 		AuthService:        authService,
 		UserService:        userService,
 		ProjectRoleService: projectRoleService,
 		CategoryService:    categoryService,
-		ProductService: productService,
+		WebsocketHub:       wshub,
+		ProductService:     productService,
+		OrderService:       orderService,
 	}
 }

@@ -17,6 +17,64 @@ type Category struct {
 	Description *string
 }
 
+type Chat struct {
+	ID        uuid.UUID
+	RoomID    uuid.UUID
+	SenderID  uuid.UUID
+	Text      *string
+	CreatedAt time.Time
+	DeletedAt *time.Time
+}
+
+type ChatMedia struct {
+	ID        uuid.UUID
+	ChatID    uuid.UUID
+	FileName  string
+	MediaType *string
+	Size      *int64
+	IsOneTime bool
+	CreatedAt time.Time
+}
+
+type Chatroom struct {
+	ID             uuid.UUID
+	Type           string
+	ProjectID      uuid.UUID
+	ParticipantKey *string
+	CreatedAt      time.Time
+}
+
+type ChatroomParticipant struct {
+	ID         uuid.UUID
+	ChatroomID uuid.UUID
+	UserID     uuid.UUID
+	JoinedAt   time.Time
+	LeftAt     *time.Time
+}
+
+type Order struct {
+	ID           uuid.UUID
+	UserID       uuid.UUID
+	ProductID    uuid.UUID
+	OrderedPrice float64
+	Status       string
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	DeletedAt    *time.Time
+}
+
+type Payment struct {
+	ID                uuid.UUID
+	OrderID           uuid.UUID
+	Method            *string
+	Status            string
+	Amount            float64
+	PaymentGatewayRef *string
+	PaidAt            *time.Time
+	CreatedAt         time.Time
+	DeletedAt         *time.Time
+}
+
 type Product struct {
 	ID          uuid.UUID
 	Name        string
@@ -41,6 +99,46 @@ type ProductImage struct {
 	ImageUrl  string
 	IsPrimary bool
 	SortOrder int32
+	CreatedAt time.Time
+}
+
+type Progress struct {
+	ID          uuid.UUID
+	ProjectID   uuid.UUID
+	Title       string
+	Weight      float64
+	IsCompleted bool
+	CreatedAt   time.Time
+}
+
+type Project struct {
+	ID                   uuid.UUID
+	OrderID              uuid.UUID
+	Name                 string
+	Description          *string
+	Status               string
+	AllowedRevisionCount int32
+	ActualStartDate      *time.Time
+	EndDate              *time.Time
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
+}
+
+type ProjectMember struct {
+	ID        uuid.UUID
+	ProjectID uuid.UUID
+	UserID    uuid.UUID
+	RoleID    uuid.UUID
+	JoinedAt  time.Time
+	LeftAt    *time.Time
+}
+
+type RevisionRequest struct {
+	ID        uuid.UUID
+	ProjectID uuid.UUID
+	Title     string
+	Reason    string
+	Status    string
 	CreatedAt time.Time
 }
 
