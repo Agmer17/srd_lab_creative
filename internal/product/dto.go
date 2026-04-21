@@ -16,3 +16,16 @@ type updateProductRequest struct {
 	Status      *string  `json:"status" binding:"omitempty,oneof=active inactive"`
 	IsFeatured  *bool    `json:"is_featured" binding:"omitempty"`
 }
+
+
+type UpdateProductImageSort struct{
+	ImageId string `json:"image_id" binding:"required,uuid"`
+	SortOrder int `json:"sort_order" binding:"required,min=0"`
+}
+
+type updateProductImageRequest struct{
+	ProductId *string `json:"product_id" binding:"omitempty,uuid"`
+	ImageUrl *string `json:"image_url" binding:"omitempty,min=3"`
+	IsPrimary *bool `json:"is_primary" binding:"omitempty"`
+	SortOrder *int `json:"sort_order" binding:"omitempty,min=0"`
+}

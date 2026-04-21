@@ -267,3 +267,10 @@ func (storage *FileStorage) saveAllFiles(ctx context.Context, basePath string, l
 
 	return filenames, nil
 }
+
+func (storage *FileStorage) DeletePublicFile(filename string, place ...string) error {
+    parts := append([]string{storage.PublicPath}, place...)
+    parts = append(parts, filename)
+    return os.Remove(filepath.Join(parts...))
+}
+

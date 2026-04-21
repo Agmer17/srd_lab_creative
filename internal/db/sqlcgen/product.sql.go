@@ -68,6 +68,51 @@ func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (P
 	return i, err
 }
 
+const createProductImage = `-- name: CreateProductImage :many
+INSERT INTO product_images (product_id, image_url, is_primary, sort_order)
+SELECT $1, unnest($2::text[]), unnest($3::bool[]), unnest($4::int[])
+RETURNING id, product_id, image_url, is_primary, sort_order, created_at
+`
+
+type CreateProductImageParams struct {
+	ProductID uuid.UUID
+	Column2   []string
+	Column3   []bool
+	Column4   []int32
+}
+
+func (q *Queries) CreateProductImage(ctx context.Context, arg CreateProductImageParams) ([]ProductImage, error) {
+	rows, err := q.db.Query(ctx, createProductImage,
+		arg.ProductID,
+		arg.Column2,
+		arg.Column3,
+		arg.Column4,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ProductImage
+	for rows.Next() {
+		var i ProductImage
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProductID,
+			&i.ImageUrl,
+			&i.IsPrimary,
+			&i.SortOrder,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const deleteProduct = `-- name: DeleteProduct :exec
 UPDATE products
 SET deleted_at = CURRENT_TIMESTAMP
@@ -76,6 +121,26 @@ WHERE id = $1 AND deleted_at IS NULL
 
 func (q *Queries) DeleteProduct(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.Exec(ctx, deleteProduct, id)
+	return err
+}
+
+const deleteProductImageByImageId = `-- name: DeleteProductImageByImageId :exec
+DELETE FROM product_images
+WHERE id = $1
+`
+
+func (q *Queries) DeleteProductImageByImageId(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteProductImageByImageId, id)
+	return err
+}
+
+const deleteProductImageByProductId = `-- name: DeleteProductImageByProductId :exec
+DELETE FROM product_images
+WHERE product_id = $1
+`
+
+func (q *Queries) DeleteProductImageByProductId(ctx context.Context, productID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteProductImageByProductId, productID)
 	return err
 }
 
@@ -106,6 +171,68 @@ func (q *Queries) GetAllProduct(ctx context.Context) ([]Product, error) {
 			&i.UpdatedAt,
 			&i.DeletedAt,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getAllProductImageByProductId = `-- name: GetAllProductImageByProductId :many
+SELECT id, product_id, image_url, is_primary, sort_order, created_at FROM product_images
+WHERE product_id = $1 ORDER BY sort_order ASC
+`
+
+func (q *Queries) GetAllProductImageByProductId(ctx context.Context, productID uuid.UUID) ([]ProductImage, error) {
+	rows, err := q.db.Query(ctx, getAllProductImageByProductId, productID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ProductImage
+	for rows.Next() {
+		var i ProductImage
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProductID,
+			&i.ImageUrl,
+			&i.IsPrimary,
+			&i.SortOrder,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getImageIdsAndOrderByProductId = `-- name: GetImageIdsAndOrderByProductId :many
+SELECT id, sort_order FROM product_images
+WHERE product_id = $1 ORDER BY sort_order ASC
+`
+
+type GetImageIdsAndOrderByProductIdRow struct {
+	ID        uuid.UUID
+	SortOrder int32
+}
+
+func (q *Queries) GetImageIdsAndOrderByProductId(ctx context.Context, productID uuid.UUID) ([]GetImageIdsAndOrderByProductIdRow, error) {
+	rows, err := q.db.Query(ctx, getImageIdsAndOrderByProductId, productID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetImageIdsAndOrderByProductIdRow
+	for rows.Next() {
+		var i GetImageIdsAndOrderByProductIdRow
+		if err := rows.Scan(&i.ID, &i.SortOrder); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -162,6 +289,57 @@ func (q *Queries) GetProductBySlug(ctx context.Context, slug string) (Product, e
 	return i, err
 }
 
+const getProductImageByImageId = `-- name: GetProductImageByImageId :one
+SELECT id, product_id, image_url, is_primary, sort_order, created_at FROM product_images
+WHERE id = $1 LIMIT 1
+`
+
+func (q *Queries) GetProductImageByImageId(ctx context.Context, id uuid.UUID) (ProductImage, error) {
+	row := q.db.QueryRow(ctx, getProductImageByImageId, id)
+	var i ProductImage
+	err := row.Scan(
+		&i.ID,
+		&i.ProductID,
+		&i.ImageUrl,
+		&i.IsPrimary,
+		&i.SortOrder,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getTotalImageOfProductId = `-- name: GetTotalImageOfProductId :one
+SELECT COUNT(*) FROM product_images
+WHERE product_id = $1
+`
+
+func (q *Queries) GetTotalImageOfProductId(ctx context.Context, productID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, getTotalImageOfProductId, productID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const imageIdOrderChange = `-- name: ImageIdOrderChange :exec
+UPDATE product_images
+SET sort_order = t.new_order
+FROM (
+    SELECT unnest($1::uuid[]) AS image_id,
+           unnest($2::int[])  AS new_order
+) AS t
+WHERE product_images.id = t.image_id
+`
+
+type ImageIdOrderChangeParams struct {
+	Column1 []uuid.UUID
+	Column2 []int32
+}
+
+func (q *Queries) ImageIdOrderChange(ctx context.Context, arg ImageIdOrderChangeParams) error {
+	_, err := q.db.Exec(ctx, imageIdOrderChange, arg.Column1, arg.Column2)
+	return err
+}
+
 const updateProduct = `-- name: UpdateProduct :one
 UPDATE products
 SET 
@@ -208,6 +386,45 @@ func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) (P
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const updateProductImageByImageId = `-- name: UpdateProductImageByImageId :one
+UPDATE product_images
+SET
+    product_id = COALESCE($2, product_id),
+    image_url = COALESCE($3, image_url),
+    is_primary = COALESCE($4, is_primary),
+    sort_order = COALESCE($5, sort_order)
+WHERE id = $1
+RETURNING id, product_id, image_url, is_primary, sort_order, created_at
+`
+
+type UpdateProductImageByImageIdParams struct {
+	ID        uuid.UUID
+	ProductID uuid.UUID
+	ImageUrl  *string
+	IsPrimary *bool
+	SortOrder *int32
+}
+
+func (q *Queries) UpdateProductImageByImageId(ctx context.Context, arg UpdateProductImageByImageIdParams) (ProductImage, error) {
+	row := q.db.QueryRow(ctx, updateProductImageByImageId,
+		arg.ID,
+		arg.ProductID,
+		arg.ImageUrl,
+		arg.IsPrimary,
+		arg.SortOrder,
+	)
+	var i ProductImage
+	err := row.Scan(
+		&i.ID,
+		&i.ProductID,
+		&i.ImageUrl,
+		&i.IsPrimary,
+		&i.SortOrder,
+		&i.CreatedAt,
 	)
 	return i, err
 }

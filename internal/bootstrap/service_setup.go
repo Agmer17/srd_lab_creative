@@ -6,6 +6,7 @@ import (
 	"github.com/Agmer17/srd_lab_creative/internal/order"
 	"github.com/Agmer17/srd_lab_creative/internal/product"
 	"github.com/Agmer17/srd_lab_creative/internal/projectrole"
+	"github.com/Agmer17/srd_lab_creative/internal/storage"
 	"github.com/Agmer17/srd_lab_creative/internal/user"
 	"github.com/Agmer17/srd_lab_creative/internal/ws"
 	"github.com/olahol/melody"
@@ -27,7 +28,9 @@ func NewServiceConfigs(googleClientId string, googleSecret string, rpf *Reposito
 	userService := user.NewUserService(rpf.UserRepository)
 	projectRoleService := projectrole.NewProjectRoleService(rpf.ProjectRoleRepository)
 	categoryService := category.NewCategoryService(rpf.CategoryRepository)
-	productService := product.NewProductService(rpf.ProductRepository)
+	myStorage := storage.NewFileStorage(5);
+	productService := product.NewProductService(rpf.ProductRepository,myStorage);
+
 
 	orderService := order.NewOrderService(rpf.OrderRepository, productService)
 	wshub := ws.NewWebsocketHub(mel)

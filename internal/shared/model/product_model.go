@@ -20,6 +20,15 @@ type Product struct {
 	UpdatedAt   time.Time  `json:"updated_at"`
 }
 
+type ProductImage struct{
+	ID uuid.UUID `json:"id"`
+	ProductID uuid.UUID `json:"product_id"`
+	ImageUrl string `json:"image_url"`
+	IsPrimary bool `json:"is_primary"`
+	SortOrder int32 `json:"sort_order"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 func MapToProductModel(gr sqlcgen.Product) Product {
 	return Product{
 		ID:          gr.ID,
@@ -44,3 +53,25 @@ func MapListToProductModel(ls []sqlcgen.Product) []Product{
 
 	return tempList
 }
+
+// Memetakan 1 entitas gambar kembalian SQLC ke Model JSON
+func MapToProductImageModel(img sqlcgen.ProductImage) ProductImage {
+	return ProductImage{
+		ID:        img.ID,
+		ProductID: img.ProductID,
+		ImageUrl:  img.ImageUrl,
+		IsPrimary: img.IsPrimary,
+		SortOrder: img.SortOrder, // Hapus fungsi pembungkus 'int()' ini jika di struct atas kamu ubah tipe SortOrder-nya jadi int32 sesuai saran!
+		CreatedAt: img.CreatedAt,
+	}
+}
+
+
+func MapToProductImageListModel(imgs []sqlcgen.ProductImage) []ProductImage {
+	var list []ProductImage
+	for _, img := range imgs {
+		list = append(list, MapToProductImageModel(img))
+	}
+	return list
+}
+

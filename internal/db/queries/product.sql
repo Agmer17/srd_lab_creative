@@ -43,3 +43,67 @@ SELECT EXISTS(
 -- name: GetProductBySlug :one
 SELECT * FROM products 
 WHERE slug = $1 AND deleted_at IS NULL LIMIT 1;
+
+
+-- name: CreateProductImage :many
+INSERT INTO product_images (product_id, image_url, is_primary, sort_order)
+SELECT $1, unnest($2::text[]), unnest($3::bool[]), unnest($4::int[])
+RETURNING *;
+
+
+-- name: GetProductImageByImageId :one
+SELECT * FROM product_images
+WHERE id = $1 LIMIT 1;
+
+-- name: GetAllProductImageByProductId :many
+SELECT * FROM product_images
+WHERE product_id = $1 ORDER BY sort_order ASC;
+
+-- name: DeleteProductImageByImageId :exec
+DELETE FROM product_images
+WHERE id = $1;
+
+-- name: DeleteProductImageByProductId :exec
+DELETE FROM product_images
+WHERE product_id = $1;
+
+-- name: UpdateProductImageByImageId :one
+UPDATE product_images
+SET
+    product_id = COALESCE(sqlc.narg('product_id'), product_id),
+    image_url = COALESCE(sqlc.narg('image_url'), image_url),
+    is_primary = COALESCE(sqlc.narg('is_primary'), is_primary),
+    sort_order = COALESCE(sqlc.narg('sort_order'), sort_order)
+WHERE id = $1
+RETURNING *;
+
+-- name: GetTotalImageOfProductId :one
+SELECT COUNT(*) FROM product_images
+WHERE product_id = $1;
+
+-- name: GetImageIdsAndOrderByProductId :many
+SELECT id, sort_order FROM product_images
+WHERE product_id = $1 ORDER BY sort_order ASC;
+
+-- name: ImageIdOrderChange :exec
+UPDATE product_images
+SET sort_order = t.new_order
+FROM (
+    SELECT unnest($1::uuid[]) AS image_id,
+           unnest($2::int[])  AS new_order
+) AS t
+WHERE product_images.id = t.image_id;
+
+
+
+-- name: AssignProductToCategory :one
+
+
+-- name: RemoveProductFromCategory :exec
+
+-- name: RemoveProductFromAllCategory :exec
+
+-- name: GetProductCategory :many
+
+-- name: GetProduct
+
