@@ -8,6 +8,7 @@ import (
 	"github.com/Agmer17/srd_lab_creative/internal/db/sqlcgen"
 	"github.com/Agmer17/srd_lab_creative/internal/order"
 	"github.com/Agmer17/srd_lab_creative/internal/product"
+	"github.com/Agmer17/srd_lab_creative/internal/project"
 	"github.com/Agmer17/srd_lab_creative/internal/projectrole"
 	"github.com/Agmer17/srd_lab_creative/internal/user"
 	"github.com/Agmer17/srd_lab_creative/internal/ws"
@@ -45,6 +46,7 @@ func NewApp(router *gin.Engine, googleClient string, googleSecret string, pool *
 	productHandler := product.NewProductHandler(serviceConfigs.ProductService)
 
 	orderHandler := order.NewOrderHandler(serviceConfigs.OrderService)
+	projectHandler := project.NewProjectHandler(serviceConfigs.ProjectService)
 
 	// ws
 	wsHandler := ws.NewWebsocketHandler(mel)
@@ -58,6 +60,7 @@ func NewApp(router *gin.Engine, googleClient string, googleSecret string, pool *
 		wsHandler,
 		productHandler,
 		orderHandler,
+		projectHandler,
 	)
 
 	return &App{

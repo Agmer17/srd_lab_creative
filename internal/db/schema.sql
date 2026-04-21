@@ -93,7 +93,6 @@ CREATE TABLE projects (
     end_date           TIMESTAMPTZ             NULL,
     created_at         TIMESTAMPTZ             NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at         TIMESTAMPTZ             NOT NULL DEFAULT CURRENT_TIMESTAMP
-    -- Tidak ada deleted_at: hapus project = eksplisit, cascade ke chat
 );
 
 CREATE TABLE project_members (
@@ -101,16 +100,18 @@ CREATE TABLE project_members (
     project_id UUID      NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     user_id    UUID      NOT NULL REFERENCES users(id)    ON DELETE CASCADE,
     role_id    UUID      NOT NULL REFERENCES roles(id)    ON DELETE RESTRICT,
+    is_owner   BOOLEAN   NOT NULL DEFAULT FALSE,
     joined_at  TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    left_at    TIMESTAMPTZ NULL,   -- NULL = masih aktif di project
+    left_at    TIMESTAMPTZ NULL,  
     UNIQUE (project_id, user_id)
 );
 
 CREATE TABLE progresses (
     id           UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
     project_id   UUID           NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    project_member_id UUID      REFERENCES project_members(id) ON DELETE SET NULL,
     title        VARCHAR(255)   NOT NULL,
-    weight       DECIMAL(5, 2)  NOT NULL,  -- pastikan total = 100 di application layer
+    weight       DECIMAL(5, 2)  NOT NULL, 
     is_completed BOOLEAN        NOT NULL DEFAULT FALSE,
     created_at   TIMESTAMPTZ      NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
