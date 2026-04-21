@@ -5,6 +5,7 @@ import (
 	"github.com/Agmer17/srd_lab_creative/internal/category"
 	"github.com/Agmer17/srd_lab_creative/internal/order"
 	"github.com/Agmer17/srd_lab_creative/internal/product"
+	"github.com/Agmer17/srd_lab_creative/internal/project"
 	"github.com/Agmer17/srd_lab_creative/internal/projectrole"
 	"github.com/Agmer17/srd_lab_creative/internal/user"
 	"github.com/Agmer17/srd_lab_creative/internal/ws"
@@ -19,6 +20,9 @@ type ServiceConfigs struct {
 	WebsocketHub       *ws.WebsocketHub
 	ProductService     *product.ProductService
 	OrderService       *order.OrderService
+
+	ProjectService       *project.ProjectService
+	ProjectMemberService *project.ProjectMemberService
 }
 
 func NewServiceConfigs(googleClientId string, googleSecret string, rpf *RepositoryConfigs, mel *melody.Melody) *ServiceConfigs {
@@ -30,6 +34,14 @@ func NewServiceConfigs(googleClientId string, googleSecret string, rpf *Reposito
 	productService := product.NewProductService(rpf.ProductRepository)
 
 	orderService := order.NewOrderService(rpf.OrderRepository, productService)
+
+	memberService := project.NewProjectMemberService(rpf.ProjectMemberRepository)
+	projectService := project.NewProjectService(
+		rpf.ProjectRepository,
+		orderService,
+		memberService,
+	)
+
 	wshub := ws.NewWebsocketHub(mel)
 
 	return &ServiceConfigs{
@@ -40,5 +52,6 @@ func NewServiceConfigs(googleClientId string, googleSecret string, rpf *Reposito
 		WebsocketHub:       wshub,
 		ProductService:     productService,
 		OrderService:       orderService,
+		ProjectService:     projectService,
 	}
 }

@@ -22,7 +22,13 @@ INSERT INTO projects (
     actual_start_date,
     end_date
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7
+    $1, 
+    $2, 
+    $3, 
+    $4, 
+    COALESCE($5::int, 3), 
+    $6, -- Gunakan narg jika start_date bisa null/tidak diisi saat create
+    $7
 )
 RETURNING id, order_id, name, description, status, allowed_revision_count, actual_start_date, end_date, created_at, updated_at
 `
@@ -32,8 +38,8 @@ type CreateProjectParams struct {
 	Name                 string
 	Description          *string
 	Status               string
-	AllowedRevisionCount int32
-	ActualStartDate      *time.Time
+	AllowedRevisionCount *int32
+	StartDate            *time.Time
 	EndDate              *time.Time
 }
 
@@ -44,7 +50,7 @@ func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (P
 		arg.Description,
 		arg.Status,
 		arg.AllowedRevisionCount,
-		arg.ActualStartDate,
+		arg.StartDate,
 		arg.EndDate,
 	)
 	var i Project
@@ -63,13 +69,16 @@ func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (P
 	return i, err
 }
 
-const deleteProject = `-- name: DeleteProject :exec
+const deleteProject = `-- name: DeleteProject :execrows
 DELETE FROM projects WHERE id = $1
 `
 
-func (q *Queries) DeleteProject(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.Exec(ctx, deleteProject, id)
-	return err
+func (q *Queries) DeleteProject(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteProject, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const getProjectDetail = `-- name: GetProjectDetail :one
@@ -224,6 +233,7 @@ func (q *Queries) GetProjectDetail(ctx context.Context, id uuid.UUID) (GetProjec
 const listProjects = `-- name: ListProjects :many
 SELECT
     p.id,
+    p.order_id,
     p.name,
     p.description,
     p.status,
@@ -233,56 +243,101 @@ SELECT
     p.created_at,
     p.updated_at,
 
-    -- Members: JSON array of active members with user & role info
+    -- Project Members
     COALESCE(
-        JSON_AGG(
-            DISTINCT JSONB_BUILD_OBJECT(
-                'id',              pm.id,
-                'user_id',         u.id,
-                'full_name',       u.full_name,
-                'email',           u.email,
-                'gender',          u.gender,
-                'profile_picture', u.profile_picture,
-                'role_id',         r.id,
-                'role_name',       r.name,
-                'joined_at',       pm.joined_at
-            )
-        ) FILTER (WHERE pm.id IS NOT NULL),
-        '[]'
-    )::jsonb AS members,
+        (
+            SELECT JSON_AGG(JSONB_BUILD_OBJECT(
+                'id', pm.id,
+                'project_id', pm.project_id,
+                'joined_at', pm.joined_at,
+                'left_at', pm.left_at,
+                'is_owner', pm.is_owner,
 
-    -- Progresses: JSON array
-    COALESCE(
-        JSON_AGG(
-            DISTINCT JSONB_BUILD_OBJECT(
-                'id',           pr.id,
-                'title',        pr.title,
-                'weight',       pr.weight,
-                'is_completed', pr.is_completed,
-                'created_at',   pr.created_at
-            )
-        ) FILTER (WHERE pr.id IS NOT NULL),
+                'user', JSONB_BUILD_OBJECT(
+                    'id', u.id,
+                    'global_role', u.global_role,
+                    'full_name', u.full_name,
+                    'email', u.email,
+                    'phone_number', u.phone_number,
+                    'profile_picture', u.profile_picture,
+                    'gender', u.gender,
+                    'oauth_provider', u.provider,
+                    'oauth_provider_user_id', u.provider_user_id,
+                    'created_at', u.created_at,
+                    'updated_at', u.updated_at,
+                    'deleted_at', u.deleted_at
+                ),
+
+                'role', JSONB_BUILD_OBJECT(
+                    'id', r.id,
+                    'role_name', r.name,
+                    'created_at', r.created_at
+                )
+            ))
+            FROM project_members pm
+            JOIN users u ON u.id = pm.user_id
+            JOIN roles r ON r.id = pm.role_id
+            WHERE pm.project_id = p.id AND pm.left_at IS NULL
+        ),
         '[]'
-    )::jsonb AS progresses
+    )::jsonb AS project_members,
+
+    -- Progress
+    COALESCE(
+        (
+            SELECT JSON_AGG(JSONB_BUILD_OBJECT(
+                'id', pr.id,
+                'project_id', pr.project_id,
+                'title', pr.title,
+                'weight', pr.weight,
+                'is_completed', pr.is_completed,
+                'created_at', pr.created_at,
+
+                'member', JSONB_BUILD_OBJECT(
+                    'id', pm_task.id,
+                    'project_id', pm_task.project_id,
+                    'joined_at', pm_task.joined_at,
+                    'left_at', pm_task.left_at,
+                    'is_owner', pm_task.is_owner,
+
+                    'user', JSONB_BUILD_OBJECT(
+                        'id', u_task.id,
+                        'global_role', u_task.global_role,
+                        'full_name', u_task.full_name,
+                        'email', u_task.email,
+                        'phone_number', u_task.phone_number,
+                        'profile_picture', u_task.profile_picture,
+                        'gender', u_task.gender,
+                        'oauth_provider', u_task.provider,
+                        'oauth_provider_user_id', u_task.provider_user_id,
+                        'created_at', u_task.created_at,
+                        'updated_at', u_task.updated_at,
+                        'deleted_at', u_task.deleted_at
+                    ),
+
+                    'role', JSONB_BUILD_OBJECT(
+                        'id', r_task.id,
+                        'role_name', r_task.name,
+                        'created_at', r_task.created_at
+                    )
+                )
+            ))
+            FROM progresses pr
+            JOIN project_members pm_task ON pm_task.id = pr.project_member_id
+            JOIN users u_task ON u_task.id = pm_task.user_id
+            JOIN roles r_task ON r_task.id = pm_task.role_id
+            WHERE pr.project_id = p.id
+        ),
+        '[]'
+    )::jsonb AS progress
 
 FROM projects p
-
-LEFT JOIN project_members pm ON pm.project_id = p.id
-    AND pm.left_at IS NULL
-
-LEFT JOIN users u  ON u.id  = pm.user_id
-    AND u.deleted_at IS NULL
-
-LEFT JOIN roles r  ON r.id  = pm.role_id
-
-LEFT JOIN progresses pr ON pr.project_id = p.id
-
-GROUP BY p.id
 ORDER BY p.created_at DESC
 `
 
 type ListProjectsRow struct {
 	ID                   uuid.UUID
+	OrderID              uuid.UUID
 	Name                 string
 	Description          *string
 	Status               string
@@ -291,15 +346,10 @@ type ListProjectsRow struct {
 	EndDate              *time.Time
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
-	Members              []byte
-	Progresses           []byte
+	ProjectMembers       []byte
+	Progress             []byte
 }
 
-// ---------------------------------------------------------------
-// GET LIST PROJECTS
-// Join: project_members -> users -> roles, progresses
-// Members filter: hanya yang left_at IS NULL (masih aktif)
-// ---------------------------------------------------------------
 func (q *Queries) ListProjects(ctx context.Context) ([]ListProjectsRow, error) {
 	rows, err := q.db.Query(ctx, listProjects)
 	if err != nil {
@@ -311,6 +361,7 @@ func (q *Queries) ListProjects(ctx context.Context) ([]ListProjectsRow, error) {
 		var i ListProjectsRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.OrderID,
 			&i.Name,
 			&i.Description,
 			&i.Status,
@@ -319,8 +370,8 @@ func (q *Queries) ListProjects(ctx context.Context) ([]ListProjectsRow, error) {
 			&i.EndDate,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.Members,
-			&i.Progresses,
+			&i.ProjectMembers,
+			&i.Progress,
 		); err != nil {
 			return nil, err
 		}

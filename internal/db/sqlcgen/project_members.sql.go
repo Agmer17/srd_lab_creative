@@ -16,27 +16,35 @@ const addProjectMember = `-- name: AddProjectMember :one
 INSERT INTO project_members (
     project_id,
     user_id,
-    role_id
+    role_id,
+    is_owner
 ) VALUES (
-    $1, $2, $3
+    $1 ,$2, $3,$4
 )
-RETURNING id, project_id, user_id, role_id, joined_at, left_at
+RETURNING id, project_id, user_id, role_id, is_owner, joined_at, left_at
 `
 
 type AddProjectMemberParams struct {
 	ProjectID uuid.UUID
 	UserID    uuid.UUID
 	RoleID    uuid.UUID
+	IsOwner   bool
 }
 
 func (q *Queries) AddProjectMember(ctx context.Context, arg AddProjectMemberParams) (ProjectMember, error) {
-	row := q.db.QueryRow(ctx, addProjectMember, arg.ProjectID, arg.UserID, arg.RoleID)
+	row := q.db.QueryRow(ctx, addProjectMember,
+		arg.ProjectID,
+		arg.UserID,
+		arg.RoleID,
+		arg.IsOwner,
+	)
 	var i ProjectMember
 	err := row.Scan(
 		&i.ID,
 		&i.ProjectID,
 		&i.UserID,
 		&i.RoleID,
+		&i.IsOwner,
 		&i.JoinedAt,
 		&i.LeftAt,
 	)
@@ -44,40 +52,48 @@ func (q *Queries) AddProjectMember(ctx context.Context, arg AddProjectMemberPara
 }
 
 const getActiveProjectMembers = `-- name: GetActiveProjectMembers :many
-SELECT
+SELECT 
     pm.id,
     pm.project_id,
+    pm.is_owner,
     pm.joined_at,
-    u.id             AS user_id,
-    u.full_name,
-    u.email,
-    u.gender,
-    u.profile_picture,
-    r.id             AS role_id,
-    r.name           AS role_name
+
+    jsonb_build_object(
+        'id', u.id,
+        'full_name', u.full_name,
+        'email', u.email,
+        'gender', u.gender,
+        'profile_picture', u.profile_picture
+    ) AS user,
+
+    jsonb_build_object(
+        'id', r.id,
+        'name', r.name
+    ) AS role
+
 FROM project_members pm
-INNER JOIN users u ON u.id = pm.user_id
-    AND u.deleted_at IS NULL
-INNER JOIN roles r ON r.id = pm.role_id
+JOIN users u 
+    ON u.id = pm.user_id
+   AND u.deleted_at IS NULL
+
+JOIN roles r 
+    ON r.id = pm.role_id
+
 WHERE pm.project_id = $1
-  AND pm.left_at    IS NULL
+  AND pm.left_at IS NULL
+
 ORDER BY pm.joined_at ASC
 `
 
 type GetActiveProjectMembersRow struct {
-	ID             uuid.UUID
-	ProjectID      uuid.UUID
-	JoinedAt       time.Time
-	UserID         uuid.UUID
-	FullName       string
-	Email          string
-	Gender         string
-	ProfilePicture *string
-	RoleID         uuid.UUID
-	RoleName       string
+	ID        uuid.UUID
+	ProjectID uuid.UUID
+	IsOwner   bool
+	JoinedAt  time.Time
+	User      []byte
+	Role      []byte
 }
 
-// Untuk kebutuhan internal (cek member aktif, validasi, dsb)
 func (q *Queries) GetActiveProjectMembers(ctx context.Context, projectID uuid.UUID) ([]GetActiveProjectMembersRow, error) {
 	rows, err := q.db.Query(ctx, getActiveProjectMembers, projectID)
 	if err != nil {
@@ -90,14 +106,147 @@ func (q *Queries) GetActiveProjectMembers(ctx context.Context, projectID uuid.UU
 		if err := rows.Scan(
 			&i.ID,
 			&i.ProjectID,
+			&i.IsOwner,
 			&i.JoinedAt,
-			&i.UserID,
-			&i.FullName,
-			&i.Email,
-			&i.Gender,
-			&i.ProfilePicture,
-			&i.RoleID,
-			&i.RoleName,
+			&i.User,
+			&i.Role,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getProjectMemberWithUser = `-- name: GetProjectMemberWithUser :one
+SELECT 
+    pm.id,
+    pm.project_id,
+    pm.is_owner,
+    pm.joined_at,
+    pm.left_at,
+
+    jsonb_build_object(
+        'id', u.id,
+        'full_name', u.full_name,
+        'email', u.email,
+        'gender', u.gender,
+        'profile_picture', u.profile_picture,
+        'global_role', u.global_role,
+        'created_at', u.created_at,
+        'updated_at', u.updated_at
+    ) AS user,
+
+    jsonb_build_object(
+        'id', r.id,
+        'name', r.name,
+        'created_at', r.created_at
+    ) AS role
+
+FROM project_members pm
+JOIN users u 
+    ON u.id = pm.user_id
+   AND u.deleted_at IS NULL
+
+JOIN roles r 
+    ON r.id = pm.role_id
+
+WHERE pm.id = $1
+LIMIT 1
+`
+
+type GetProjectMemberWithUserRow struct {
+	ID        uuid.UUID
+	ProjectID uuid.UUID
+	IsOwner   bool
+	JoinedAt  time.Time
+	LeftAt    *time.Time
+	User      []byte
+	Role      []byte
+}
+
+func (q *Queries) GetProjectMemberWithUser(ctx context.Context, id uuid.UUID) (GetProjectMemberWithUserRow, error) {
+	row := q.db.QueryRow(ctx, getProjectMemberWithUser, id)
+	var i GetProjectMemberWithUserRow
+	err := row.Scan(
+		&i.ID,
+		&i.ProjectID,
+		&i.IsOwner,
+		&i.JoinedAt,
+		&i.LeftAt,
+		&i.User,
+		&i.Role,
+	)
+	return i, err
+}
+
+const listProjectMembersWithUser = `-- name: ListProjectMembersWithUser :many
+SELECT 
+    pm.id,
+    pm.project_id,
+    pm.is_owner,
+    pm.joined_at,
+    pm.left_at,
+
+    jsonb_build_object(
+        'id', u.id,
+        'full_name', u.full_name,
+        'email', u.email,
+        'gender', u.gender,
+        'profile_picture', u.profile_picture,
+        'global_role', u.global_role,
+        'created_at', u.created_at,
+        'updated_at', u.updated_at
+    ) AS user,
+
+    jsonb_build_object(
+        'id', r.id,
+        'name', r.name,
+        'created_at', r.created_at
+    ) AS role
+
+FROM project_members pm
+JOIN users u 
+    ON u.id = pm.user_id
+   AND u.deleted_at IS NULL
+
+JOIN roles r 
+    ON r.id = pm.role_id
+
+WHERE pm.project_id = $1
+ORDER BY pm.joined_at ASC
+`
+
+type ListProjectMembersWithUserRow struct {
+	ID        uuid.UUID
+	ProjectID uuid.UUID
+	IsOwner   bool
+	JoinedAt  time.Time
+	LeftAt    *time.Time
+	User      []byte
+	Role      []byte
+}
+
+func (q *Queries) ListProjectMembersWithUser(ctx context.Context, projectID uuid.UUID) ([]ListProjectMembersWithUserRow, error) {
+	rows, err := q.db.Query(ctx, listProjectMembersWithUser, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListProjectMembersWithUserRow
+	for rows.Next() {
+		var i ListProjectMembersWithUserRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.IsOwner,
+			&i.JoinedAt,
+			&i.LeftAt,
+			&i.User,
+			&i.Role,
 		); err != nil {
 			return nil, err
 		}

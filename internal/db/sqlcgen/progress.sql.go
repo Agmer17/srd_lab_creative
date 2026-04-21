@@ -19,7 +19,7 @@ INSERT INTO progresses (
 ) VALUES (
     $1, $2, $3
 )
-RETURNING id, project_id, title, weight, is_completed, created_at
+RETURNING id, project_id, project_member_id, title, weight, is_completed, created_at
 `
 
 type CreateProgressParams struct {
@@ -34,6 +34,7 @@ func (q *Queries) CreateProgress(ctx context.Context, arg CreateProgressParams) 
 	err := row.Scan(
 		&i.ID,
 		&i.ProjectID,
+		&i.ProjectMemberID,
 		&i.Title,
 		&i.Weight,
 		&i.IsCompleted,
@@ -59,7 +60,7 @@ func (q *Queries) DeleteProgress(ctx context.Context, arg DeleteProgressParams) 
 }
 
 const getProgressesByProject = `-- name: GetProgressesByProject :many
-SELECT id, project_id, title, weight, is_completed, created_at
+SELECT id, project_id, project_member_id, title, weight, is_completed, created_at
 FROM progresses
 WHERE project_id = $1
 ORDER BY created_at ASC
@@ -77,6 +78,7 @@ func (q *Queries) GetProgressesByProject(ctx context.Context, projectID uuid.UUI
 		if err := rows.Scan(
 			&i.ID,
 			&i.ProjectID,
+			&i.ProjectMemberID,
 			&i.Title,
 			&i.Weight,
 			&i.IsCompleted,
@@ -114,7 +116,7 @@ SET
     is_completed = COALESCE($5, is_completed)
 WHERE id         = $1
   AND project_id = $2
-RETURNING id, project_id, title, weight, is_completed, created_at
+RETURNING id, project_id, project_member_id, title, weight, is_completed, created_at
 `
 
 type UpdateProgressParams struct {
@@ -137,6 +139,7 @@ func (q *Queries) UpdateProgress(ctx context.Context, arg UpdateProgressParams) 
 	err := row.Scan(
 		&i.ID,
 		&i.ProjectID,
+		&i.ProjectMemberID,
 		&i.Title,
 		&i.Weight,
 		&i.IsCompleted,

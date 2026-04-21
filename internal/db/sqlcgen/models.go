@@ -103,12 +103,13 @@ type ProductImage struct {
 }
 
 type Progress struct {
-	ID          uuid.UUID
-	ProjectID   uuid.UUID
-	Title       string
-	Weight      float64
-	IsCompleted bool
-	CreatedAt   time.Time
+	ID              uuid.UUID
+	ProjectID       uuid.UUID
+	ProjectMemberID uuid.UUID
+	Title           string
+	Weight          float64
+	IsCompleted     bool
+	CreatedAt       time.Time
 }
 
 type Project struct {
@@ -129,6 +130,7 @@ type ProjectMember struct {
 	ProjectID uuid.UUID
 	UserID    uuid.UUID
 	RoleID    uuid.UUID
+	IsOwner   bool
 	JoinedAt  time.Time
 	LeftAt    *time.Time
 }

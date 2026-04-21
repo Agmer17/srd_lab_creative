@@ -126,6 +126,6 @@ func (prh *ProjectRoleHandler) RegisterRoutes(r gin.IRouter) {
 	roleApi.GET("/search", prh.HandleSearchRole)
 	roleApi.POST("/add", prh.PostCreateNewRole)
 	roleApi.PATCH("/update/:id", prh.PatchRole)
-	roleApi.DELETE("/delete/:id")
+	roleApi.DELETE("/delete/:id", prh.DeleteRoleHandler)
 
 }

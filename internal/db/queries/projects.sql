@@ -8,7 +8,13 @@ INSERT INTO projects (
     actual_start_date,
     end_date
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7
+    sqlc.arg('order_id'), 
+    sqlc.arg('name'), 
+    sqlc.narg('description'), 
+    sqlc.arg('status'), 
+    COALESCE(sqlc.narg('allowed_revision_count')::int, 3), 
+    sqlc.narg('start_date'), -- Gunakan narg jika start_date bisa null/tidak diisi saat create
+    sqlc.narg('end_date')
 )
 RETURNING *;
 
@@ -25,17 +31,13 @@ SET
 WHERE id = $1
 RETURNING *;
 
--- name: DeleteProject :exec
+-- name: DeleteProject :execrows
 DELETE FROM projects WHERE id = $1;
 
--- ---------------------------------------------------------------
--- GET LIST PROJECTS
--- Join: project_members -> users -> roles, progresses
--- Members filter: hanya yang left_at IS NULL (masih aktif)
--- ---------------------------------------------------------------
 -- name: ListProjects :many
 SELECT
     p.id,
+    p.order_id,
     p.name,
     p.description,
     p.status,
@@ -45,51 +47,95 @@ SELECT
     p.created_at,
     p.updated_at,
 
-    -- Members: JSON array of active members with user & role info
+    -- Project Members
     COALESCE(
-        JSON_AGG(
-            DISTINCT JSONB_BUILD_OBJECT(
-                'id',              pm.id,
-                'user_id',         u.id,
-                'full_name',       u.full_name,
-                'email',           u.email,
-                'gender',          u.gender,
-                'profile_picture', u.profile_picture,
-                'role_id',         r.id,
-                'role_name',       r.name,
-                'joined_at',       pm.joined_at
-            )
-        ) FILTER (WHERE pm.id IS NOT NULL),
-        '[]'
-    )::jsonb AS members,
+        (
+            SELECT JSON_AGG(JSONB_BUILD_OBJECT(
+                'id', pm.id,
+                'project_id', pm.project_id,
+                'joined_at', pm.joined_at,
+                'left_at', pm.left_at,
+                'is_owner', pm.is_owner,
 
-    -- Progresses: JSON array
-    COALESCE(
-        JSON_AGG(
-            DISTINCT JSONB_BUILD_OBJECT(
-                'id',           pr.id,
-                'title',        pr.title,
-                'weight',       pr.weight,
-                'is_completed', pr.is_completed,
-                'created_at',   pr.created_at
-            )
-        ) FILTER (WHERE pr.id IS NOT NULL),
+                'user', JSONB_BUILD_OBJECT(
+                    'id', u.id,
+                    'global_role', u.global_role,
+                    'full_name', u.full_name,
+                    'email', u.email,
+                    'phone_number', u.phone_number,
+                    'profile_picture', u.profile_picture,
+                    'gender', u.gender,
+                    'oauth_provider', u.provider,
+                    'oauth_provider_user_id', u.provider_user_id,
+                    'created_at', u.created_at,
+                    'updated_at', u.updated_at,
+                    'deleted_at', u.deleted_at
+                ),
+
+                'role', JSONB_BUILD_OBJECT(
+                    'id', r.id,
+                    'role_name', r.name,
+                    'created_at', r.created_at
+                )
+            ))
+            FROM project_members pm
+            JOIN users u ON u.id = pm.user_id
+            JOIN roles r ON r.id = pm.role_id
+            WHERE pm.project_id = p.id AND pm.left_at IS NULL
+        ),
         '[]'
-    )::jsonb AS progresses
+    )::jsonb AS project_members,
+
+    -- Progress
+    COALESCE(
+        (
+            SELECT JSON_AGG(JSONB_BUILD_OBJECT(
+                'id', pr.id,
+                'project_id', pr.project_id,
+                'title', pr.title,
+                'weight', pr.weight,
+                'is_completed', pr.is_completed,
+                'created_at', pr.created_at,
+
+                'member', JSONB_BUILD_OBJECT(
+                    'id', pm_task.id,
+                    'project_id', pm_task.project_id,
+                    'joined_at', pm_task.joined_at,
+                    'left_at', pm_task.left_at,
+                    'is_owner', pm_task.is_owner,
+
+                    'user', JSONB_BUILD_OBJECT(
+                        'id', u_task.id,
+                        'global_role', u_task.global_role,
+                        'full_name', u_task.full_name,
+                        'email', u_task.email,
+                        'phone_number', u_task.phone_number,
+                        'profile_picture', u_task.profile_picture,
+                        'gender', u_task.gender,
+                        'oauth_provider', u_task.provider,
+                        'oauth_provider_user_id', u_task.provider_user_id,
+                        'created_at', u_task.created_at,
+                        'updated_at', u_task.updated_at,
+                        'deleted_at', u_task.deleted_at
+                    ),
+
+                    'role', JSONB_BUILD_OBJECT(
+                        'id', r_task.id,
+                        'role_name', r_task.name,
+                        'created_at', r_task.created_at
+                    )
+                )
+            ))
+            FROM progresses pr
+            JOIN project_members pm_task ON pm_task.id = pr.project_member_id
+            JOIN users u_task ON u_task.id = pm_task.user_id
+            JOIN roles r_task ON r_task.id = pm_task.role_id
+            WHERE pr.project_id = p.id
+        ),
+        '[]'
+    )::jsonb AS progress
 
 FROM projects p
-
-LEFT JOIN project_members pm ON pm.project_id = p.id
-    AND pm.left_at IS NULL
-
-LEFT JOIN users u  ON u.id  = pm.user_id
-    AND u.deleted_at IS NULL
-
-LEFT JOIN roles r  ON r.id  = pm.role_id
-
-LEFT JOIN progresses pr ON pr.project_id = p.id
-
-GROUP BY p.id
 ORDER BY p.created_at DESC;
 
 -- ---------------------------------------------------------------
