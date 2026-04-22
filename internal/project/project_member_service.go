@@ -144,3 +144,16 @@ func (ps *ProjectMemberService) validateOwnerOrMember(ctx context.Context, userI
 
 	return true, true, nil
 }
+
+func (ps *ProjectMemberService) RemoveUserFromProject(ctx context.Context, toRemove uuid.UUID) *shared.ErrorResponse {
+
+	err := ps.memberRepo.RemoveFromProject(ctx, toRemove)
+	if err != nil {
+		if errors.Is(err, memberNotFound) {
+			return shared.NewErrorResponse(404, "no member found with this id")
+		}
+		return shared.NewErrorResponse(500, "something wrong while trying to remove user from project")
+	}
+
+	return nil
+}

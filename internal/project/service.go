@@ -177,3 +177,23 @@ func (ps *ProjectService) UpdateProjectMemberRole(ctx context.Context, curr uuid
 	return data, nil
 
 }
+
+func (ps *ProjectService) RemoveUserFromProject(ctx context.Context, curr uuid.UUID, rmf uuid.UUID, projectId uuid.UUID) *shared.ErrorResponse {
+
+	owner, mem, err := ps.memberService.validateOwnerOrMember(ctx, curr, projectId)
+	if err != nil {
+		return shared.NewErrorResponse(500, "something wrong with the server")
+	}
+
+	if !owner || !mem {
+		return shared.NewErrorResponse(403, "permision denied")
+	}
+
+	delErr := ps.memberService.RemoveUserFromProject(ctx, rmf)
+	if delErr != nil {
+		return delErr
+	}
+
+	return nil
+
+}

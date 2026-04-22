@@ -9,11 +9,10 @@ INSERT INTO project_members (
 )
 RETURNING *;
 
--- name: RemoveProjectMember :exec
+-- name: RemoveProjectMember :execrows
 UPDATE project_members
 SET left_at = CURRENT_TIMESTAMP
-WHERE project_id = $1
-  AND user_id    = $2
+WHERE id = $1
   AND left_at IS NULL;
 
 -- name: GetActiveProjectMembers :many

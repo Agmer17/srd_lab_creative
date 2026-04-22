@@ -226,6 +226,33 @@ func (ph *ProjectHandler) PatchMemberData(c *gin.Context) {
 
 }
 
+func (ph *ProjectHandler) DeleteProjectMember(c *gin.Context) {
+	creatorId, _ := middleware.GetUserID(c)
+
+	projectParam := c.Param("projectId")
+	projectId, err := uuid.Parse(projectParam)
+	if err != nil {
+		c.JSON(400, shared.NewErrorResponse(400, "invalid project id"))
+		return
+	}
+
+	delParam := c.Param("memberId")
+	deletedId, err := uuid.Parse(delParam)
+	if err != nil {
+		c.JSON(400, shared.NewErrorResponse(400, "invalid member id"))
+		return
+	}
+
+	delErr := ph.service.RemoveUserFromProject(c.Request.Context(), creatorId, deletedId, projectId)
+	if delErr != nil {
+		c.JSON(delErr.Code, delErr)
+		return
+	}
+
+	c.JSON(200, shared.NewSuccessResponse(200, "successfully removing user from this project", nil))
+
+}
+
 func (ph *ProjectHandler) RegisterRoutes(r gin.IRouter) {
 
 	projectApi := r.Group("/project")
@@ -246,6 +273,6 @@ func (ph *ProjectHandler) RegisterRoutes(r gin.IRouter) {
 	// admin members endpoint
 	projectAdmin.POST("/:projectId/members/add", ph.PostNewMember)
 	projectAdmin.PATCH("/:projectId/members/update", ph.PatchMemberData)
-	projectAdmin.DELETE("/:projectId/members/delete")
+	projectAdmin.DELETE("/:projectId/members/delete/:memberId", ph.DeleteProjectMember)
 
 }

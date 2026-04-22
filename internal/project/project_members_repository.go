@@ -191,3 +191,17 @@ func (pmr *ProjectMemberRepository) GetMemberDataByUserId(ctx context.Context, u
 		LeftAt:    row.LeftAt,
 	}, nil
 }
+
+func (pmr *ProjectMemberRepository) RemoveFromProject(ctx context.Context, toRemove uuid.UUID) error {
+
+	aff, err := pmr.db.RemoveProjectMember(ctx, toRemove)
+	if err != nil {
+		return err
+	}
+
+	if aff == 0 {
+		return memberNotFound
+	}
+
+	return nil
+}
