@@ -63,12 +63,16 @@ SELECT
         'full_name', u.full_name,
         'email', u.email,
         'gender', u.gender,
-        'profile_picture', u.profile_picture
+        'profile_picture', u.profile_picture,
+        'global_role', u.global_role,
+        'created_at', u.created_at,
+        'updated_at', u.updated_at
     ) AS user,
 
-    jsonb_build_object(
+     jsonb_build_object(
         'id', r.id,
-        'name', r.name
+        'role_name', r.name,
+        'created_at', r.created_at
     ) AS role
 
 FROM project_members pm
@@ -121,7 +125,7 @@ func (q *Queries) GetActiveProjectMembers(ctx context.Context, projectID uuid.UU
 	return items, nil
 }
 
-const getProjectMemberWithUser = `-- name: GetProjectMemberWithUser :one
+const getMemberDataByUserId = `-- name: GetMemberDataByUserId :one
 SELECT 
     pm.id,
     pm.project_id,
@@ -142,7 +146,75 @@ SELECT
 
     jsonb_build_object(
         'id', r.id,
-        'name', r.name,
+        'role_name', r.name,
+        'created_at', r.created_at
+    ) AS role
+
+FROM project_members pm
+JOIN users u 
+    ON u.id = pm.user_id
+   AND u.deleted_at IS NULL
+
+JOIN roles r 
+    ON r.id = pm.role_id
+
+WHERE pm.user_id = $1
+and pm.project_id = $2
+LIMIT 1
+`
+
+type GetMemberDataByUserIdParams struct {
+	UserID    uuid.UUID
+	ProjectID uuid.UUID
+}
+
+type GetMemberDataByUserIdRow struct {
+	ID        uuid.UUID
+	ProjectID uuid.UUID
+	IsOwner   bool
+	JoinedAt  time.Time
+	LeftAt    *time.Time
+	User      []byte
+	Role      []byte
+}
+
+func (q *Queries) GetMemberDataByUserId(ctx context.Context, arg GetMemberDataByUserIdParams) (GetMemberDataByUserIdRow, error) {
+	row := q.db.QueryRow(ctx, getMemberDataByUserId, arg.UserID, arg.ProjectID)
+	var i GetMemberDataByUserIdRow
+	err := row.Scan(
+		&i.ID,
+		&i.ProjectID,
+		&i.IsOwner,
+		&i.JoinedAt,
+		&i.LeftAt,
+		&i.User,
+		&i.Role,
+	)
+	return i, err
+}
+
+const getProjectMemberByID = `-- name: GetProjectMemberByID :one
+SELECT 
+    pm.id,
+    pm.project_id,
+    pm.is_owner,
+    pm.joined_at,
+    pm.left_at,
+
+    jsonb_build_object(
+        'id', u.id,
+        'full_name', u.full_name,
+        'email', u.email,
+        'gender', u.gender,
+        'profile_picture', u.profile_picture,
+        'global_role', u.global_role,
+        'created_at', u.created_at,
+        'updated_at', u.updated_at
+    ) AS user,
+
+    jsonb_build_object(
+        'id', r.id,
+        'role_name', r.name,
         'created_at', r.created_at
     ) AS role
 
@@ -158,7 +230,7 @@ WHERE pm.id = $1
 LIMIT 1
 `
 
-type GetProjectMemberWithUserRow struct {
+type GetProjectMemberByIDRow struct {
 	ID        uuid.UUID
 	ProjectID uuid.UUID
 	IsOwner   bool
@@ -168,9 +240,9 @@ type GetProjectMemberWithUserRow struct {
 	Role      []byte
 }
 
-func (q *Queries) GetProjectMemberWithUser(ctx context.Context, id uuid.UUID) (GetProjectMemberWithUserRow, error) {
-	row := q.db.QueryRow(ctx, getProjectMemberWithUser, id)
-	var i GetProjectMemberWithUserRow
+func (q *Queries) GetProjectMemberByID(ctx context.Context, id uuid.UUID) (GetProjectMemberByIDRow, error) {
+	row := q.db.QueryRow(ctx, getProjectMemberByID, id)
+	var i GetProjectMemberByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.ProjectID,
@@ -204,7 +276,7 @@ SELECT
 
     jsonb_build_object(
         'id', r.id,
-        'name', r.name,
+        'role_name', r.name,
         'created_at', r.created_at
     ) AS role
 
@@ -258,20 +330,48 @@ func (q *Queries) ListProjectMembersWithUser(ctx context.Context, projectID uuid
 	return items, nil
 }
 
-const removeProjectMember = `-- name: RemoveProjectMember :exec
+const removeProjectMember = `-- name: RemoveProjectMember :execrows
 UPDATE project_members
 SET left_at = CURRENT_TIMESTAMP
-WHERE project_id = $1
-  AND user_id    = $2
+WHERE id = $1
   AND left_at IS NULL
 `
 
-type RemoveProjectMemberParams struct {
-	ProjectID uuid.UUID
-	UserID    uuid.UUID
+func (q *Queries) RemoveProjectMember(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, removeProjectMember, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
-func (q *Queries) RemoveProjectMember(ctx context.Context, arg RemoveProjectMemberParams) error {
-	_, err := q.db.Exec(ctx, removeProjectMember, arg.ProjectID, arg.UserID)
-	return err
+const updateProjectMemberRole = `-- name: UpdateProjectMemberRole :one
+UPDATE project_members
+SET 
+    role_id = $1,
+    is_owner =  COALESCE($2, is_owner)
+WHERE id = $3
+  AND left_at IS NULL
+RETURNING id, project_id, user_id, role_id, is_owner, joined_at, left_at
+`
+
+type UpdateProjectMemberRoleParams struct {
+	RoleID   uuid.UUID
+	IsOwner  *bool
+	MemberID uuid.UUID
+}
+
+func (q *Queries) UpdateProjectMemberRole(ctx context.Context, arg UpdateProjectMemberRoleParams) (ProjectMember, error) {
+	row := q.db.QueryRow(ctx, updateProjectMemberRole, arg.RoleID, arg.IsOwner, arg.MemberID)
+	var i ProjectMember
+	err := row.Scan(
+		&i.ID,
+		&i.ProjectID,
+		&i.UserID,
+		&i.RoleID,
+		&i.IsOwner,
+		&i.JoinedAt,
+		&i.LeftAt,
+	)
+	return i, err
 }

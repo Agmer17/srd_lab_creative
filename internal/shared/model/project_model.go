@@ -36,10 +36,21 @@ type Project struct {
 	AllowedRevisionCount int32             `json:"allowed_revision_count"`
 	ProjectMembers       []ProjectMember   `json:"project_members"`
 	Progress             []ProjectProgress `json:"progress"`
+	ProjectRevision      []ProjectRevision `json:"project_revision,omitempty"`
+	OrderData            *Order            `json:"order,omitempty"`
 	ActualStartDate      *time.Time        `json:"actual_start_date"`
 	EndDate              *time.Time        `json:"end_date"`
 	CreatedAt            time.Time         `json:"created_at"`
 	UpdatedAt            time.Time         `json:"updated_at"`
+}
+
+type ProjectRevision struct {
+	Id        uuid.UUID `json:"id"`
+	ProjectId uuid.UUID `json:"project_id"`
+	Title     string    `json:"title"`
+	Reason    string    `json:"reason"`
+	Status    string    `json:"status"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 func MapProjectDataToModel(dbProject sqlcgen.Project) Project {

@@ -18,8 +18,8 @@ type User struct {
 	PhoneNumber    *string    `json:"phone_number"`
 	ProfilePicture *string    `json:"profile_picture"`
 	Gender         string     `json:"gender"`
-	Provider       string     `json:"oauth_provider"`
-	ProviderUserID string     `json:"oauth_provider_user_id"`
+	Provider       string     `json:"oauth_provider,omitempty"`
+	ProviderUserID string     `json:"oauth_provider_user_id,omitempty"`
 	CreatedAt      time.Time  `json:"created_at"`
 	UpdatedAt      time.Time  `json:"updated_at"`
 	DeletedAt      *time.Time `json:"deleted_at"`
