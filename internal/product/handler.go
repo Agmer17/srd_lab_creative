@@ -280,15 +280,99 @@ func (pth *ProductHandler) HandleGetAllProductImages(c *gin.Context){
 }
 
 // Product Categories
-func (pth *ProductHandler) PostAssignProductCategory(c *gin.Context){}
+func (pth *ProductHandler) PostAssignProductCategory(c *gin.Context) {
+	// terima product_id dari URL
+	productIdParams := c.Param("product_id")
+	productId, err := uuid.Parse(productIdParams)
+	if err != nil {
+		c.JSON(400, shared.NewErrorResponse(400, "invalid product id params"))
+		return
+	}
 
-func (pth *ProductHandler) DeleteRemoveProductCategoryHandler(c *gin.Context){}
+	// terima daftar category_ids dari body
+	var req assignProductCategoryRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		vldMsg, ok := pkg.ParseValidationErrors(err)
+		if !ok {
+			c.JSON(400, shared.NewErrorResponse(400, "invalid request body! please provide valid category_ids"))
+			return
+		}
+		c.JSON(400, shared.NewErrorResponse(400, vldMsg))
+		return
+	}
 
-func (pth *ProductHandler) DeleteRemoveAllProductCategoriesHandler(c *gin.Context){}
+	if errAssign := pth.svc.AssignProductCategory(c, productId, req); errAssign != nil {
+		c.JSON(errAssign.Code, errAssign)
+		return
+	}
+	c.JSON(200, shared.NewSuccessResponse(200, "Categories successfully assigned to product", nil))
+}
 
-func (pth *ProductHandler) HandleGetProductsByCategoryFilter(c *gin.Context){}
+func (pth *ProductHandler) DeleteRemoveProductCategoryHandler(c *gin.Context) {
+	productId, err := uuid.Parse(c.Param("product_id"))
+	if err != nil {
+		c.JSON(400, shared.NewErrorResponse(400, "invalid product id params"))
+		return
+	}
+	categoryId, err := uuid.Parse(c.Param("category_id"))
+	if err != nil {
+		c.JSON(400, shared.NewErrorResponse(400, "invalid category id params"))
+		return
+	}
 
-func (pth *ProductHandler) HandleGetProductCategories(c *gin.Context){}
+	if errDel := pth.svc.RemoveProductCategory(c, productId, categoryId); errDel != nil {
+		c.JSON(errDel.Code, errDel)
+		return
+	}
+	c.JSON(200, shared.NewSuccessResponse(200, "Category successfully removed from product", nil))
+}
+
+func (pth *ProductHandler) DeleteRemoveAllProductCategoriesHandler(c *gin.Context) {
+	productId, err := uuid.Parse(c.Param("product_id"))
+	if err != nil {
+		c.JSON(400, shared.NewErrorResponse(400, "invalid product id params"))
+		return
+	}
+
+	if errDel := pth.svc.RemoveAllProductCategories(c, productId); errDel != nil {
+		c.JSON(errDel.Code, errDel)
+		return
+	}
+	c.JSON(200, shared.NewSuccessResponse(200, "All categories successfully removed from product", nil))
+}
+
+func (pth *ProductHandler) HandleGetProductsByCategoryFilter(c *gin.Context) {
+	// category_id diambil dari query param: /categories/filter?category_id=uuid
+	categoryIdStr := c.Query("category_id")
+	categoryId, err := uuid.Parse(categoryIdStr)
+	if err != nil {
+		c.JSON(400, shared.NewErrorResponse(400, "invalid or missing category_id query param"))
+		return
+	}
+
+	data, errGet := pth.svc.GetProductsByCategory(c, categoryId)
+	if errGet != nil {
+		c.JSON(errGet.Code, errGet)
+		return
+	}
+	c.JSON(200, shared.NewSuccessResponse(200, "Products successfully retrieved by category", data))
+}
+
+func (pth *ProductHandler) HandleGetProductCategories(c *gin.Context) {
+	productId, err := uuid.Parse(c.Param("product_id"))
+	if err != nil {
+		c.JSON(400, shared.NewErrorResponse(400, "invalid product id params"))
+		return
+	}
+
+	data, errGet := pth.svc.GetProductCategories(c, productId)
+	if errGet != nil {
+		c.JSON(errGet.Code, errGet)
+		return
+	}
+	c.JSON(200, shared.NewSuccessResponse(200, "Product categories successfully retrieved", data))
+}
+
 
 
 

@@ -180,3 +180,42 @@ func (pr *ProductRepository) DeleteAllProductImage (ctx context.Context, product
 	}
 	return nil;
 }
+
+
+// Product Categories
+
+func (pr *ProductRepository) AssignProductCategory(ctx context.Context, productId uuid.UUID, categoryId uuid.UUID) error {
+	err := pr.db.AssignProductToCategory(ctx, sqlcgen.AssignProductToCategoryParams{
+		ProductID:  productId,
+		CategoryID: categoryId,
+	})
+	return err
+}
+
+func (pr *ProductRepository) RemoveProductCategory(ctx context.Context, productId uuid.UUID, categoryId uuid.UUID) error {
+	err := pr.db.RemoveProductFromCategory(ctx, sqlcgen.RemoveProductFromCategoryParams{
+		ProductID:  productId,
+		CategoryID: categoryId,
+	})
+	return err
+}
+
+func (pr *ProductRepository) RemoveAllProductCategories(ctx context.Context, productId uuid.UUID) error {
+	return pr.db.RemoveProductFromAllCategory(ctx, productId)
+}
+
+func (pr *ProductRepository) GetCategoriesOfProduct(ctx context.Context, productId uuid.UUID) ([]model.Category, error) {
+	data, err := pr.db.GetProductCategory(ctx, productId)
+	if err != nil {
+		return []model.Category{}, err
+	}
+	return model.MapListToCategoryModel(data), nil
+}
+
+func (pr *ProductRepository) GetProductsByCategory(ctx context.Context, categoryId uuid.UUID) ([]model.Product, error) {
+	data, err := pr.db.GetProductsByCategory(ctx, categoryId)
+	if err != nil {
+		return []model.Product{}, err
+	}
+	return model.MapListToProductModel(data), nil
+}

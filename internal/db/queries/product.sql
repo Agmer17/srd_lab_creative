@@ -96,14 +96,26 @@ WHERE product_images.id = t.image_id;
 
 
 
--- name: AssignProductToCategory :one
-
+-- name: AssignProductToCategory :exec
+INSERT INTO product_categories(product_id, category_id)
+VALUES ($1, $2)
+ON CONFLICT (product_id, category_id) DO NOTHING;
 
 -- name: RemoveProductFromCategory :exec
+DELETE FROM product_categories
+WHERE product_id = $1 AND category_id = $2;
 
 -- name: RemoveProductFromAllCategory :exec
+DELETE FROM product_categories
+WHERE product_id = $1;
 
 -- name: GetProductCategory :many
+SELECT c.* FROM categories c
+JOIN product_categories pc ON c.id = pc.category_id
+WHERE pc.product_id = $1;
 
--- name: GetProduct
+-- name: GetProductsByCategory :many
+SELECT p.* FROM products p
+JOIN product_categories pc ON p.id = pc.product_id
+WHERE pc.category_id = $1 AND p.deleted_at IS NULL;
 

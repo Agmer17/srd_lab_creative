@@ -11,6 +11,22 @@ import (
 	"github.com/google/uuid"
 )
 
+const assignProductToCategory = `-- name: AssignProductToCategory :exec
+INSERT INTO product_categories(product_id, category_id)
+VALUES ($1, $2)
+ON CONFLICT (product_id, category_id) DO NOTHING
+`
+
+type AssignProductToCategoryParams struct {
+	ProductID  uuid.UUID
+	CategoryID uuid.UUID
+}
+
+func (q *Queries) AssignProductToCategory(ctx context.Context, arg AssignProductToCategoryParams) error {
+	_, err := q.db.Exec(ctx, assignProductToCategory, arg.ProductID, arg.CategoryID)
+	return err
+}
+
 const checkProductSlugExists = `-- name: CheckProductSlugExists :one
 SELECT EXISTS(
     SELECT 1 FROM products 
@@ -289,6 +305,37 @@ func (q *Queries) GetProductBySlug(ctx context.Context, slug string) (Product, e
 	return i, err
 }
 
+const getProductCategory = `-- name: GetProductCategory :many
+SELECT c.id, c.name, c.slug, c.description FROM categories c
+JOIN product_categories pc ON c.id = pc.category_id
+WHERE pc.product_id = $1
+`
+
+func (q *Queries) GetProductCategory(ctx context.Context, productID uuid.UUID) ([]Category, error) {
+	rows, err := q.db.Query(ctx, getProductCategory, productID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Category
+	for rows.Next() {
+		var i Category
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Slug,
+			&i.Description,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getProductImageByImageId = `-- name: GetProductImageByImageId :one
 SELECT id, product_id, image_url, is_primary, sort_order, created_at FROM product_images
 WHERE id = $1 LIMIT 1
@@ -306,6 +353,43 @@ func (q *Queries) GetProductImageByImageId(ctx context.Context, id uuid.UUID) (P
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const getProductsByCategory = `-- name: GetProductsByCategory :many
+SELECT p.id, p.name, p.slug, p.description, p.price, p.status, p.is_featured, p.created_at, p.updated_at, p.deleted_at FROM products p
+JOIN product_categories pc ON p.id = pc.product_id
+WHERE pc.category_id = $1 AND p.deleted_at IS NULL
+`
+
+func (q *Queries) GetProductsByCategory(ctx context.Context, categoryID uuid.UUID) ([]Product, error) {
+	rows, err := q.db.Query(ctx, getProductsByCategory, categoryID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Product
+	for rows.Next() {
+		var i Product
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Slug,
+			&i.Description,
+			&i.Price,
+			&i.Status,
+			&i.IsFeatured,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getTotalImageOfProductId = `-- name: GetTotalImageOfProductId :one
@@ -337,6 +421,31 @@ type ImageIdOrderChangeParams struct {
 
 func (q *Queries) ImageIdOrderChange(ctx context.Context, arg ImageIdOrderChangeParams) error {
 	_, err := q.db.Exec(ctx, imageIdOrderChange, arg.Column1, arg.Column2)
+	return err
+}
+
+const removeProductFromAllCategory = `-- name: RemoveProductFromAllCategory :exec
+DELETE FROM product_categories
+WHERE product_id = $1
+`
+
+func (q *Queries) RemoveProductFromAllCategory(ctx context.Context, productID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, removeProductFromAllCategory, productID)
+	return err
+}
+
+const removeProductFromCategory = `-- name: RemoveProductFromCategory :exec
+DELETE FROM product_categories
+WHERE product_id = $1 AND category_id = $2
+`
+
+type RemoveProductFromCategoryParams struct {
+	ProductID  uuid.UUID
+	CategoryID uuid.UUID
+}
+
+func (q *Queries) RemoveProductFromCategory(ctx context.Context, arg RemoveProductFromCategoryParams) error {
+	_, err := q.db.Exec(ctx, removeProductFromCategory, arg.ProductID, arg.CategoryID)
 	return err
 }
 

@@ -284,4 +284,59 @@ func (ps *ProductService) GetAllProductImage (ctx context.Context, productId uui
 	}
 	return data,nil;
 }
-	
+
+
+// Product Categories
+
+func (ps *ProductService) AssignProductCategory(ctx context.Context, productId uuid.UUID, req assignProductCategoryRequest) *shared.ErrorResponse {
+	// verify product exists
+	_, err := ps.repo.GetProduct(ctx, productId)
+	if err != nil {
+		if errors.Is(err, errProductNotFound) {
+			return shared.NewErrorResponse(404, "no product with this id was found")
+		}
+		return shared.NewErrorResponse(500, "something wrong with the server while trying to get product")
+	}
+
+	// bulk assign tiap category_id ke produk ini
+	for _, catIdStr := range req.CategoryIds {
+		catId, parseErr := uuid.Parse(catIdStr)
+		if parseErr != nil {
+			return shared.NewErrorResponse(400, "invalid category id: "+catIdStr)
+		}
+		if err := ps.repo.AssignProductCategory(ctx, productId, catId); err != nil {
+			return shared.NewErrorResponse(500, "something wrong while assigning category to product")
+		}
+	}
+	return nil
+}
+
+func (ps *ProductService) RemoveProductCategory(ctx context.Context, productId uuid.UUID, categoryId uuid.UUID) *shared.ErrorResponse {
+	if err := ps.repo.RemoveProductCategory(ctx, productId, categoryId); err != nil {
+		return shared.NewErrorResponse(500, "something wrong while removing category from product")
+	}
+	return nil
+}
+
+func (ps *ProductService) RemoveAllProductCategories(ctx context.Context, productId uuid.UUID) *shared.ErrorResponse {
+	if err := ps.repo.RemoveAllProductCategories(ctx, productId); err != nil {
+		return shared.NewErrorResponse(500, "something wrong while removing all categories from product")
+	}
+	return nil
+}
+
+func (ps *ProductService) GetProductCategories(ctx context.Context, productId uuid.UUID) ([]model.Category, *shared.ErrorResponse) {
+	data, err := ps.repo.GetCategoriesOfProduct(ctx, productId)
+	if err != nil {
+		return []model.Category{}, shared.NewErrorResponse(500, "something wrong while getting product categories")
+	}
+	return data, nil
+}
+
+func (ps *ProductService) GetProductsByCategory(ctx context.Context, categoryId uuid.UUID) ([]model.Product, *shared.ErrorResponse) {
+	data, err := ps.repo.GetProductsByCategory(ctx, categoryId)
+	if err != nil {
+		return []model.Product{}, shared.NewErrorResponse(500, "something wrong while getting products by category")
+	}
+	return data, nil
+}

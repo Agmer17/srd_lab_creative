@@ -29,3 +29,7 @@ type updateProductImageRequest struct{
 	IsPrimary *bool `json:"is_primary" binding:"omitempty"`
 	SortOrder *int `json:"sort_order" binding:"omitempty,min=0"`
 }
+
+type assignProductCategoryRequest struct {
+	CategoryIds []string `json:"category_ids" binding:"required,min=1,dive,uuid"`
+}
