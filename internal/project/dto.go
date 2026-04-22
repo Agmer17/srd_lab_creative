@@ -20,3 +20,17 @@ type addNewMemberDto struct {
 	RoleId    string `json:"role_id" binding:"required,uuid"`
 	IsOwner   bool   `json:"is_owner" binding:"omitempty"`
 }
+
+type updateProjectRequest struct {
+	Name            *string    `json:"name,omitempty" binding:"omitempty"`
+	Description     *string    `json:"description,omitempty" binding:"omitempty"`
+	Status          *string    `json:"status,omitempty" binding:"omitempty"`
+	AllowedRevision *int32     `json:"allowed_revision,omitempty" binding:"omitempty,min=1,max=100"`
+	EndDate         *time.Time `json:"end_date" binding:"omitempty"`
+}
+
+type updateMemberDataRequest struct {
+	MemberId string `json:"member_id" binding:"required,uuid"`
+	NewRole  string `json:"role_id" binding:"required,uuid"`
+	IsOwner  *bool  `json:"is_owner,omitempty" binding:"omitempty"`
+}

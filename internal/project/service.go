@@ -78,7 +78,6 @@ func (ps *ProjectService) CreateProject(ctx context.Context, dto createProjectRe
 }
 
 func (ps *ProjectService) DeleteProjects(ctx context.Context, id uuid.UUID) *shared.ErrorResponse {
-
 	err := ps.projectRepo.DeleteProjects(ctx, id)
 	if err != nil {
 		if errors.Is(err, projectNotFound) {
@@ -88,4 +87,93 @@ func (ps *ProjectService) DeleteProjects(ctx context.Context, id uuid.UUID) *sha
 	}
 
 	return nil
+}
+
+func (ps *ProjectService) UpdateProjectData(ctx context.Context, id uuid.UUID, dto updateProjectRequest) (model.Project, *shared.ErrorResponse) {
+
+	data, err := ps.projectRepo.UpdateProject(ctx, id, dto)
+	if err != nil {
+		if errors.Is(err, projectNotFound) {
+			return model.Project{}, shared.NewErrorResponse(404, "no project with this id found")
+		}
+		return model.Project{}, shared.NewErrorResponse(500, "something went wronf with the server while trying to update project data")
+	}
+
+	return data, nil
+}
+
+func (ps *ProjectService) GetDetailById(ctx context.Context, id uuid.UUID, userId uuid.UUID) (model.Project, *shared.ErrorResponse) {
+
+	data, err := ps.projectRepo.GetProjectDetailById(ctx, id)
+	if err != nil {
+		if errors.Is(err, projectNotFound) {
+			return model.Project{}, shared.NewErrorResponse(404, "project with this id not found! please try again")
+		}
+
+		return model.Project{}, shared.NewErrorResponse(500, "something wronf while trying to get project details, try again later")
+	}
+
+	allowed := false
+
+	for _, v := range data.ProjectMembers {
+		if v.User.ID == userId {
+			allowed = true
+			break
+		}
+	}
+
+	if !allowed {
+		return model.Project{}, shared.NewErrorResponse(403, "you can't access this data")
+	}
+
+	return data, nil
+}
+
+func (ps *ProjectService) GetMemberFromProject(ctx context.Context, projectId uuid.UUID, userId uuid.UUID) ([]model.ProjectMember, *shared.ErrorResponse) {
+
+	mem, err := ps.memberService.GetAllMemberFromProjectId(ctx, projectId, userId)
+	if err != nil {
+		return []model.ProjectMember{}, err
+	}
+
+	return mem, nil
+}
+
+func (ps *ProjectService) AddNewMember(ctx context.Context, projectId uuid.UUID, userId uuid.UUID, req addNewMemberDto) ([]model.ProjectMember, *shared.ErrorResponse) {
+
+	own, mem, err := ps.memberService.validateOwnerOrMember(ctx, userId, projectId)
+	if err != nil {
+		return []model.ProjectMember{}, shared.NewErrorResponse(500, "something wrong with the server")
+	}
+	if !own || !mem {
+		return []model.ProjectMember{}, shared.NewErrorResponse(403, "permision denied")
+	}
+
+	newData, addErr := ps.memberService.addNewMember(ctx, req)
+	if addErr != nil {
+		return []model.ProjectMember{}, addErr
+	}
+
+	return newData, nil
+
+}
+
+func (ps *ProjectService) UpdateProjectMemberRole(ctx context.Context, curr uuid.UUID, memberId uuid.UUID, projectId uuid.UUID, role uuid.UUID, isOwner *bool) (model.ProjectMember, *shared.ErrorResponse) {
+
+	owner, mem, err := ps.memberService.validateOwnerOrMember(ctx, curr, projectId)
+	if err != nil {
+		return model.ProjectMember{}, shared.NewErrorResponse(500, "something wrong with the server")
+	}
+
+	if !owner || !mem {
+		return model.ProjectMember{}, shared.NewErrorResponse(403, "permision denied")
+	}
+
+	data, uptErr := ps.memberService.UpdateMemberRole(ctx, memberId, role, isOwner)
+	if uptErr != nil {
+		return model.ProjectMember{}, uptErr
+	}
+
+	return data, nil
+
 }
