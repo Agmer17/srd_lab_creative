@@ -21,7 +21,7 @@ func (ph *PaymentHandler) PostCreateTransaction(c *gin.Context) {
 	// get user id
 	userID, ok := middleware.GetUserID(c);
 	if !ok {
-		c.JSON(401,shared.NewErrorResponse(401,"Invvalid session"));
+		c.JSON(401,shared.NewErrorResponse(401,"Invalid session"));
 		return;
 	}
 	// get order id
@@ -30,14 +30,28 @@ func (ph *PaymentHandler) PostCreateTransaction(c *gin.Context) {
 	if err != nil {
 		c.JSON(400, shared.NewErrorResponse(400, "invalid id params"));
 		return;
-	}	
+	}
+	// get query params untuk method pembayaran
+	paymentMethod := c.Query("method");
+	
+	// Validasi apakah query kosong
+	if paymentMethod == "" {
+		c.JSON(400, shared.NewErrorResponse(400, "Please input method query parameter. Example: ?method=qris"));
+		return
+	}
+	// Validasi Enum (Apakah value yang diketik terdaftar di map ValidPaymentMethods?)
+	if !ValidPaymentMethods[paymentMethod] {
+		c.JSON(400, shared.NewErrorResponse(400, "Payment method invalid or not supported"));
+		return
+	}
 	// langsung execute logic createTransaction
-	data,createErr := ph.svc.AddTransaction(c,userID,orderId);
+	data,createErr := ph.svc.AddTransaction(c,userID,orderId,paymentMethod);
 	if createErr != nil{
 		c.JSON(createErr.Code,createErr);
 		return;
 	}
 	c.JSON(200, shared.NewSuccessResponse(200,"Transaction successfully created",data));
+	return;
 
 }
 
