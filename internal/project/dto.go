@@ -34,3 +34,16 @@ type updateMemberDataRequest struct {
 	NewRole  string `json:"role_id" binding:"required,uuid"`
 	IsOwner  *bool  `json:"is_owner,omitempty" binding:"omitempty"`
 }
+
+type createProgressRequests struct {
+	Title           string  `json:"title" binding:"required,alphanumspace"`
+	Weight          float64 `json:"weight" binding:"required,min=1,max=100"`
+	ProjectMemberID string  `json:"project_member_id" binding:"required,uuid"`
+}
+
+type updateProgressRequest struct {
+	Title           *string  `json:"title" binding:"omitempty,min=3,max=255,alphanumspace"`
+	Weight          *float64 `json:"weight" binding:"omitempty,min=1,max=99"`
+	IsComplete      *bool    `json:"is_completed" binding:"omitempty"`
+	ProjectMemberId string   `json:"project_member_id" binding:"required,uuid"`
+}

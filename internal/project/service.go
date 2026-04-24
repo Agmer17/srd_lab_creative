@@ -12,16 +12,18 @@ import (
 )
 
 type ProjectService struct {
-	projectRepo   *ProjectRepository
-	orderService  *order.OrderService
-	memberService *ProjectMemberService
+	projectRepo     *ProjectRepository
+	orderService    *order.OrderService
+	memberService   *ProjectMemberService
+	progressService *ProgressService
 }
 
-func NewProjectService(repo *ProjectRepository, orderSvc *order.OrderService, memSvc *ProjectMemberService) *ProjectService {
+func NewProjectService(repo *ProjectRepository, orderSvc *order.OrderService, memSvc *ProjectMemberService, progSvc *ProgressService) *ProjectService {
 	return &ProjectService{
-		projectRepo:   repo,
-		orderService:  orderSvc,
-		memberService: memSvc,
+		projectRepo:     repo,
+		orderService:    orderSvc,
+		memberService:   memSvc,
+		progressService: progSvc,
 	}
 }
 
@@ -141,11 +143,11 @@ func (ps *ProjectService) GetMemberFromProject(ctx context.Context, projectId uu
 
 func (ps *ProjectService) AddNewMember(ctx context.Context, projectId uuid.UUID, userId uuid.UUID, req addNewMemberDto) ([]model.ProjectMember, *shared.ErrorResponse) {
 
-	own, mem, err := ps.memberService.validateOwnerOrMember(ctx, userId, projectId)
+	own, _, err := ps.memberService.validateOwnerOrMember(ctx, userId, projectId)
 	if err != nil {
 		return []model.ProjectMember{}, shared.NewErrorResponse(500, "something wrong with the server")
 	}
-	if !own || !mem {
+	if !own {
 		return []model.ProjectMember{}, shared.NewErrorResponse(403, "permision denied")
 	}
 
@@ -160,12 +162,12 @@ func (ps *ProjectService) AddNewMember(ctx context.Context, projectId uuid.UUID,
 
 func (ps *ProjectService) UpdateProjectMemberRole(ctx context.Context, curr uuid.UUID, memberId uuid.UUID, projectId uuid.UUID, role uuid.UUID, isOwner *bool) (model.ProjectMember, *shared.ErrorResponse) {
 
-	owner, mem, err := ps.memberService.validateOwnerOrMember(ctx, curr, projectId)
+	owner, _, err := ps.memberService.validateOwnerOrMember(ctx, curr, projectId)
 	if err != nil {
 		return model.ProjectMember{}, shared.NewErrorResponse(500, "something wrong with the server")
 	}
 
-	if !owner || !mem {
+	if !owner {
 		return model.ProjectMember{}, shared.NewErrorResponse(403, "permision denied")
 	}
 
@@ -180,12 +182,12 @@ func (ps *ProjectService) UpdateProjectMemberRole(ctx context.Context, curr uuid
 
 func (ps *ProjectService) RemoveUserFromProject(ctx context.Context, curr uuid.UUID, rmf uuid.UUID, projectId uuid.UUID) *shared.ErrorResponse {
 
-	owner, mem, err := ps.memberService.validateOwnerOrMember(ctx, curr, projectId)
+	owner, _, err := ps.memberService.validateOwnerOrMember(ctx, curr, projectId)
 	if err != nil {
 		return shared.NewErrorResponse(500, "something wrong with the server")
 	}
 
-	if !owner || !mem {
+	if !owner {
 		return shared.NewErrorResponse(403, "permision denied")
 	}
 
@@ -196,4 +198,51 @@ func (ps *ProjectService) RemoveUserFromProject(ctx context.Context, curr uuid.U
 
 	return nil
 
+}
+
+func (ps *ProjectService) GetProgressFromProject(ctx context.Context, id uuid.UUID, userId uuid.UUID) ([]model.ProjectProgress, *shared.ErrorResponse) {
+
+	own, mem, err := ps.memberService.validateOwnerOrMember(ctx, userId, id)
+	if err != nil {
+		return []model.ProjectProgress{}, shared.NewErrorResponse(500, "something wrong while trying to get user data")
+	}
+
+	if !own || !mem {
+		return []model.ProjectProgress{}, shared.NewErrorResponse(403, "access denied! you can't access this data")
+	}
+
+	return ps.progressService.GetProgressFromProject(ctx, id)
+}
+
+func (ps *ProjectService) CreateProjectProgress(ctx context.Context, curr uuid.UUID, projectId uuid.UUID, dto createProgressRequests) ([]model.ProjectProgress, *shared.ErrorResponse) {
+
+	own, _, err := ps.memberService.validateOwnerOrMember(ctx, curr, projectId)
+	if err != nil {
+		return []model.ProjectProgress{}, shared.NewErrorResponse(500, "something wrong while trying to get user data")
+	}
+
+	if !own {
+		return []model.ProjectProgress{}, shared.NewErrorResponse(403, "access denied! you can't access this data")
+	}
+
+	newData, insErr := ps.progressService.AddNewProgress(ctx, projectId, dto)
+	if insErr != nil {
+		return []model.ProjectProgress{}, insErr
+	}
+
+	return newData, nil
+}
+
+func (ps *ProjectService) RemoveProjectProgress(ctx context.Context, id uuid.UUID) *shared.ErrorResponse {
+
+	return ps.progressService.DeleteProgress(ctx, id)
+}
+
+func (ps *ProjectService) UpdateProjectProgress(
+	ctx context.Context,
+	id uuid.UUID,
+	dto updateProgressRequest,
+) (model.ProjectProgress, *shared.ErrorResponse) {
+
+	return ps.progressService.UpdateProgressData(ctx, id, dto)
 }

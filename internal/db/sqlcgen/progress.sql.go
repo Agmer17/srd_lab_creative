@@ -7,6 +7,7 @@ package sqlcgen
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -15,21 +16,32 @@ const createProgress = `-- name: CreateProgress :one
 INSERT INTO progresses (
     project_id,
     title,
-    weight
+    weight,
+    project_member_id
 ) VALUES (
-    $1, $2, $3
+    $1,
+    $2,
+    $3,
+    $4::uuid
+
 )
 RETURNING id, project_id, project_member_id, title, weight, is_completed, created_at
 `
 
 type CreateProgressParams struct {
-	ProjectID uuid.UUID
-	Title     string
-	Weight    float64
+	ProjectID       uuid.UUID
+	Title           string
+	Weight          float64
+	ProjectMemberID uuid.UUID
 }
 
 func (q *Queries) CreateProgress(ctx context.Context, arg CreateProgressParams) (Progress, error) {
-	row := q.db.QueryRow(ctx, createProgress, arg.ProjectID, arg.Title, arg.Weight)
+	row := q.db.QueryRow(ctx, createProgress,
+		arg.ProjectID,
+		arg.Title,
+		arg.Weight,
+		arg.ProjectMemberID,
+	)
 	var i Progress
 	err := row.Scan(
 		&i.ID,
@@ -43,46 +55,165 @@ func (q *Queries) CreateProgress(ctx context.Context, arg CreateProgressParams) 
 	return i, err
 }
 
-const deleteProgress = `-- name: DeleteProgress :exec
+const deleteProgress = `-- name: DeleteProgress :execrows
 DELETE FROM progresses
 WHERE id         = $1
-  AND project_id = $2
 `
 
-type DeleteProgressParams struct {
-	ID        uuid.UUID
-	ProjectID uuid.UUID
+func (q *Queries) DeleteProgress(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteProgress, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
-func (q *Queries) DeleteProgress(ctx context.Context, arg DeleteProgressParams) error {
-	_, err := q.db.Exec(ctx, deleteProgress, arg.ID, arg.ProjectID)
-	return err
-}
+const getProgressById = `-- name: GetProgressById :one
+SELECT 
+    p.id AS progress_id,
+    p.title,
+    p.weight,
+    p.is_completed,
+    p.created_at AS progress_created_at,
+    p.project_id,
+    
+   jsonb_build_object(
+        'id', pm.id,
+        'project_id', pm.project_id,
+        'is_owner', pm.is_owner,
+        'joined_at', pm.joined_at,
+        'user', jsonb_build_object(
+            'id', u.id,
+            'full_name', u.full_name,
+            'email', u.email,
+            'gender', u.gender,
+            'profile_picture', u.profile_picture,
+            'global_role', u.global_role,
+            'created_at', u.created_at,
+            'updated_at', u.updated_at
+        ),
+        'role', jsonb_build_object(
+            'id', r.id,
+            'role_name', r.name,
+            'created_at', r.created_at
+        )
+    ) AS project_member
 
-const getProgressesByProject = `-- name: GetProgressesByProject :many
-SELECT id, project_id, project_member_id, title, weight, is_completed, created_at
-FROM progresses
-WHERE project_id = $1
-ORDER BY created_at ASC
+FROM progresses p
+LEFT JOIN project_members pm 
+    ON p.project_member_id = pm.id 
+    AND pm.left_at IS NULL
+
+LEFT JOIN users u 
+    ON pm.user_id = u.id 
+    AND u.deleted_at IS NULL
+
+LEFT JOIN roles r 
+    ON pm.role_id = r.id
+
+WHERE p.id = $1
+ORDER BY p.created_at DESC
 `
 
-func (q *Queries) GetProgressesByProject(ctx context.Context, projectID uuid.UUID) ([]Progress, error) {
-	rows, err := q.db.Query(ctx, getProgressesByProject, projectID)
+type GetProgressByIdRow struct {
+	ProgressID        uuid.UUID
+	Title             string
+	Weight            float64
+	IsCompleted       bool
+	ProgressCreatedAt time.Time
+	ProjectID         uuid.UUID
+	ProjectMember     []byte
+}
+
+func (q *Queries) GetProgressById(ctx context.Context, id uuid.UUID) (GetProgressByIdRow, error) {
+	row := q.db.QueryRow(ctx, getProgressById, id)
+	var i GetProgressByIdRow
+	err := row.Scan(
+		&i.ProgressID,
+		&i.Title,
+		&i.Weight,
+		&i.IsCompleted,
+		&i.ProgressCreatedAt,
+		&i.ProjectID,
+		&i.ProjectMember,
+	)
+	return i, err
+}
+
+const getProgressByProject = `-- name: GetProgressByProject :many
+SELECT 
+    p.id AS progress_id,
+    p.title,
+    p.weight,
+    p.is_completed,
+    p.created_at AS progress_created_at,
+    p.project_id,
+    
+   jsonb_build_object(
+        'id', pm.id,
+        'project_id', pm.project_id,
+        'is_owner', pm.is_owner,
+        'joined_at', pm.joined_at,
+        'user', jsonb_build_object(
+            'id', u.id,
+            'full_name', u.full_name,
+            'email', u.email,
+            'gender', u.gender,
+            'profile_picture', u.profile_picture,
+            'global_role', u.global_role,
+            'created_at', u.created_at,
+            'updated_at', u.updated_at
+        ),
+        'role', jsonb_build_object(
+            'id', r.id,
+            'role_name', r.name,
+            'created_at', r.created_at
+        )
+    ) AS project_member
+
+FROM progresses p
+LEFT JOIN project_members pm 
+    ON p.project_member_id = pm.id 
+    AND pm.left_at IS NULL
+
+LEFT JOIN users u 
+    ON pm.user_id = u.id 
+    AND u.deleted_at IS NULL
+
+LEFT JOIN roles r 
+    ON pm.role_id = r.id
+
+WHERE p.project_id = $1
+ORDER BY p.created_at DESC
+`
+
+type GetProgressByProjectRow struct {
+	ProgressID        uuid.UUID
+	Title             string
+	Weight            float64
+	IsCompleted       bool
+	ProgressCreatedAt time.Time
+	ProjectID         uuid.UUID
+	ProjectMember     []byte
+}
+
+func (q *Queries) GetProgressByProject(ctx context.Context, projectID uuid.UUID) ([]GetProgressByProjectRow, error) {
+	rows, err := q.db.Query(ctx, getProgressByProject, projectID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Progress
+	var items []GetProgressByProjectRow
 	for rows.Next() {
-		var i Progress
+		var i GetProgressByProjectRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.ProjectID,
-			&i.ProjectMemberID,
+			&i.ProgressID,
 			&i.Title,
 			&i.Weight,
 			&i.IsCompleted,
-			&i.CreatedAt,
+			&i.ProgressCreatedAt,
+			&i.ProjectID,
+			&i.ProjectMember,
 		); err != nil {
 			return nil, err
 		}
@@ -100,7 +231,6 @@ FROM progresses
 WHERE project_id = $1
 `
 
-// Untuk validasi di application layer agar total weight = 100
 func (q *Queries) GetTotalWeightByProject(ctx context.Context, projectID uuid.UUID) (float64, error) {
 	row := q.db.QueryRow(ctx, getTotalWeightByProject, projectID)
 	var total_weight float64
@@ -111,29 +241,29 @@ func (q *Queries) GetTotalWeightByProject(ctx context.Context, projectID uuid.UU
 const updateProgress = `-- name: UpdateProgress :one
 UPDATE progresses
 SET
-    title        = COALESCE($3, title),
-    weight       = COALESCE($4, weight),
-    is_completed = COALESCE($5, is_completed)
+    title        = COALESCE($2, title),
+    weight       = COALESCE($3, weight),
+    is_completed = COALESCE($4, is_completed),
+    project_member_id = COALESCE($5::uuid, project_member_id)
 WHERE id         = $1
-  AND project_id = $2
 RETURNING id, project_id, project_member_id, title, weight, is_completed, created_at
 `
 
 type UpdateProgressParams struct {
-	ID          uuid.UUID
-	ProjectID   uuid.UUID
-	Title       *string
-	Weight      *float64
-	IsCompleted *bool
+	ID              uuid.UUID
+	Title           *string
+	Weight          *float64
+	IsCompleted     *bool
+	ProjectMemberID uuid.UUID
 }
 
 func (q *Queries) UpdateProgress(ctx context.Context, arg UpdateProgressParams) (Progress, error) {
 	row := q.db.QueryRow(ctx, updateProgress,
 		arg.ID,
-		arg.ProjectID,
 		arg.Title,
 		arg.Weight,
 		arg.IsCompleted,
+		arg.ProjectMemberID,
 	)
 	var i Progress
 	err := row.Scan(
