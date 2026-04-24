@@ -253,6 +253,106 @@ func (ph *ProjectHandler) DeleteProjectMember(c *gin.Context) {
 
 }
 
+func (ph *ProjectHandler) GetProgressFromProject(c *gin.Context) {
+
+	param := c.Param("projectId")
+
+	projectId, err := uuid.Parse(param)
+	if err != nil {
+		c.JSON(400, shared.NewErrorResponse(400, "invalid project id"))
+		return
+	}
+
+	userId, _ := middleware.GetUserID(c)
+
+	data, getErr := ph.service.GetProgressFromProject(c.Request.Context(), projectId, userId)
+	if getErr != nil {
+		c.JSON(getErr.Code, getErr)
+		return
+	}
+
+	c.JSON(200, shared.NewSuccessResponse(200, "successfully getting progress data", data))
+}
+
+func (ph *ProjectHandler) PostCreateProgress(c *gin.Context) {
+	param := c.Param("projectId")
+
+	projectId, err := uuid.Parse(param)
+	if err != nil {
+		c.JSON(400, shared.NewErrorResponse(400, "invalid project id"))
+		return
+	}
+
+	userId, _ := middleware.GetUserID(c)
+	var req createProgressRequests
+	if err := c.ShouldBindJSON(&req); err != nil {
+		errMap, isValid := pkg.ParseValidationErrors(err)
+
+		if isValid {
+			c.JSON(400, shared.NewErrorResponse(400, errMap))
+			return
+		}
+
+		c.JSON(400, shared.NewErrorResponse(400, "invalid request body"))
+		return
+	}
+
+	newData, insErr := ph.service.CreateProjectProgress(c.Request.Context(), userId, projectId, req)
+	if insErr != nil {
+		c.JSON(insErr.Code, insErr)
+		return
+
+	}
+
+	c.JSON(200, shared.NewSuccessResponse(200, "success adding new progress to prject", newData))
+}
+
+func (ph *ProjectHandler) DeleteProjectProgress(c *gin.Context) {
+	progParam := c.Param("id")
+	progressId, err := uuid.Parse(progParam)
+	if err != nil {
+		c.JSON(400, shared.NewErrorResponse(400, "invalid project id"))
+		return
+	}
+
+	delErr := ph.service.RemoveProjectProgress(c.Request.Context(), progressId)
+	if delErr != nil {
+		c.JSON(delErr.Code, delErr)
+		return
+	}
+
+	c.JSON(200, shared.NewSuccessResponse(200, "successfully deleting progress", nil))
+}
+
+func (ph *ProjectHandler) PatchUpdateProgress(c *gin.Context) {
+	progParam := c.Param("id")
+	progressId, err := uuid.Parse(progParam)
+	if err != nil {
+		c.JSON(400, shared.NewErrorResponse(400, "invalid project id"))
+		return
+	}
+
+	var req updateProgressRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		errMap, isValid := pkg.ParseValidationErrors(err)
+
+		if isValid {
+			c.JSON(400, shared.NewErrorResponse(400, errMap))
+			return
+		}
+
+		c.JSON(400, shared.NewErrorResponse(400, "invalid request body"))
+		return
+	}
+
+	data, uptErr := ph.service.UpdateProjectProgress(c.Request.Context(), progressId, req)
+	if uptErr != nil {
+		c.JSON(uptErr.Code, uptErr)
+	}
+
+	c.JSON(200, shared.NewSuccessResponse(200, "successfully updating the project data", data))
+}
+
 func (ph *ProjectHandler) RegisterRoutes(r gin.IRouter) {
 
 	projectApi := r.Group("/project")
@@ -274,5 +374,11 @@ func (ph *ProjectHandler) RegisterRoutes(r gin.IRouter) {
 	projectAdmin.POST("/:projectId/members/add", ph.PostNewMember)
 	projectAdmin.PATCH("/:projectId/members/update", ph.PatchMemberData)
 	projectAdmin.DELETE("/:projectId/members/delete/:memberId", ph.DeleteProjectMember)
+
+	// progress endpoint
+	projectApi.GET("/:projectId/progress", ph.GetProgressFromProject)
+	projectApi.POST("/:projectId/progress/add", ph.PostCreateProgress)
+	projectApi.DELETE("/:projectId/progress/delete/:id", ph.DeleteProjectProgress)
+	projectApi.PATCH("/:projectId/progress/update/:id", ph.PatchUpdateProgress)
 
 }

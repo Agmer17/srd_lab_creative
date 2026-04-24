@@ -24,6 +24,7 @@ type ServiceConfigs struct {
 
 	ProjectService       *project.ProjectService
 	ProjectMemberService *project.ProjectMemberService
+	ProgressService      *project.ProgressService
 }
 
 func NewServiceConfigs(googleClientId string, googleSecret string, rpf *RepositoryConfigs, mel *melody.Melody) *ServiceConfigs {
@@ -32,29 +33,33 @@ func NewServiceConfigs(googleClientId string, googleSecret string, rpf *Reposito
 	userService := user.NewUserService(rpf.UserRepository)
 	projectRoleService := projectrole.NewProjectRoleService(rpf.ProjectRoleRepository)
 	categoryService := category.NewCategoryService(rpf.CategoryRepository)
-	myStorage := storage.NewFileStorage(5);
-	productService := product.NewProductService(rpf.ProductRepository,myStorage);
-
+	myStorage := storage.NewFileStorage(5)
+	productService := product.NewProductService(rpf.ProductRepository, myStorage)
 
 	orderService := order.NewOrderService(rpf.OrderRepository, productService)
 
 	memberService := project.NewProjectMemberService(rpf.ProjectMemberRepository)
+	progressService := project.NewProgressService(rpf.ProgressRepository)
+
 	projectService := project.NewProjectService(
 		rpf.ProjectRepository,
 		orderService,
 		memberService,
+		progressService,
 	)
 
 	wshub := ws.NewWebsocketHub(mel)
 
 	return &ServiceConfigs{
-		AuthService:        authService,
-		UserService:        userService,
-		ProjectRoleService: projectRoleService,
-		CategoryService:    categoryService,
-		WebsocketHub:       wshub,
-		ProductService:     productService,
-		OrderService:       orderService,
-		ProjectService:     projectService,
+		AuthService:          authService,
+		UserService:          userService,
+		ProjectRoleService:   projectRoleService,
+		CategoryService:      categoryService,
+		WebsocketHub:         wshub,
+		ProductService:       productService,
+		OrderService:         orderService,
+		ProjectService:       projectService,
+		ProgressService:      progressService,
+		ProjectMemberService: memberService,
 	}
 }
