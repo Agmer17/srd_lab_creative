@@ -72,11 +72,14 @@ CREATE TABLE orders (
 
 CREATE TABLE payments (
     id                   UUID                  PRIMARY KEY DEFAULT gen_random_uuid(),
-    order_id             UUID                  NOT NULL UNIQUE REFERENCES orders(id) ON DELETE RESTRICT,
+    order_id             UUID                  NOT NULL REFERENCES orders(id) ON DELETE RESTRICT,
     method               VARCHAR(100),
     status               payment_status_enum   NOT NULL DEFAULT 'unpaid',
     amount               DECIMAL(15, 2)        NOT NULL,
-    payment_gateway_ref  VARCHAR(255),
+    fee                  DECIMAL(15, 2)        DEFAULT 0,
+    total_payment        DECIMAL(15, 2)        NULL,
+    payment_number       TEXT                  NULL,
+    expired_at           TIMESTAMPTZ           NULL,
     paid_at              TIMESTAMPTZ             NULL,
     created_at           TIMESTAMPTZ             NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at           TIMESTAMPTZ             NULL  

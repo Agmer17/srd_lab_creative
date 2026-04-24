@@ -64,15 +64,18 @@ type Order struct {
 }
 
 type Payment struct {
-	ID                uuid.UUID
-	OrderID           uuid.UUID
-	Method            *string
-	Status            string
-	Amount            float64
-	PaymentGatewayRef *string
-	PaidAt            *time.Time
-	CreatedAt         time.Time
-	DeletedAt         *time.Time
+	ID            uuid.UUID
+	OrderID       uuid.UUID
+	Method        *string
+	Status        string
+	Amount        float64
+	Fee           *float64
+	TotalPayment  *float64
+	PaymentNumber *string
+	ExpiredAt     *time.Time
+	PaidAt        *time.Time
+	CreatedAt     time.Time
+	DeletedAt     *time.Time
 }
 
 type Product struct {

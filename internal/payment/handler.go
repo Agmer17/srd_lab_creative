@@ -1,8 +1,10 @@
 package payment
 
 import (
+	"github.com/Agmer17/srd_lab_creative/internal/shared"
 	"github.com/Agmer17/srd_lab_creative/internal/shared/middleware"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type PaymentHandler struct {
@@ -16,7 +18,27 @@ func NewPaymentHandler(s *PaymentService) *PaymentHandler {
 }
 
 func (ph *PaymentHandler) PostCreateTransaction(c *gin.Context) {
-	// Logic untuk generate invoice ke Payment Gateway dan simpan pending ke lokal.
+	// get user id
+	userID, ok := middleware.GetUserID(c);
+	if !ok {
+		c.JSON(401,shared.NewErrorResponse(401,"Invvalid session"));
+		return;
+	}
+	// get order id
+	path := c.Param("order_id");
+	orderId, err := uuid.Parse(path);
+	if err != nil {
+		c.JSON(400, shared.NewErrorResponse(400, "invalid id params"));
+		return;
+	}	
+	// langsung execute logic createTransaction
+	data,createErr := ph.svc.AddTransaction(c,userID,orderId);
+	if createErr != nil{
+		c.JSON(createErr.Code,createErr);
+		return;
+	}
+	c.JSON(200, shared.NewSuccessResponse(200,"Transaction successfully created",data));
+
 }
 
 func (ph *PaymentHandler) PostWebhookListener(c *gin.Context) {
