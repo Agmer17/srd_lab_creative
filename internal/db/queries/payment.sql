@@ -15,6 +15,12 @@ WHERE p.id = $1
   AND p.deleted_at IS NULL
 LIMIT 1;
 
+-- name: GetAllPayments :many
+SELECT p.* FROM payments p
+JOIN orders o ON o.id = p.order_id
+WHERE o.user_id = $1
+  AND p.deleted_at IS NULL
+ORDER BY p.created_at DESC;
 
 -- name: CreateNewPayment :one
 INSERT INTO payments (

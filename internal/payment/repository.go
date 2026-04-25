@@ -110,3 +110,11 @@ func (Pr *PaymentRepository) GetPaymentByID(ctx context.Context, userID, payment
 	}
 	return model.MapToPaymentModel(data),nil;
 }
+
+func (Pr *PaymentRepository) GetAllPaymentsByUserID(ctx context.Context, userID uuid.UUID) ([]model.Payment,error){
+	data, err := Pr.db.GetAllPayments(ctx,userID);
+	if err != nil{
+		return []model.Payment{},err;
+	}
+	return model.MapListToPaymentModel(data),nil;
+}

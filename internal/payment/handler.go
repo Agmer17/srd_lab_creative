@@ -94,10 +94,27 @@ func (ph *PaymentHandler) PostCancelPayment(c *gin.Context) {
 
 func (ph *PaymentHandler) HandleGetPaymentHistory(c *gin.Context) {
 	// Menampilkan list history transaksi user.
+	
+	// get user id
+	userID, ok := middleware.GetUserID(c);
+	if !ok {
+		c.JSON(401,shared.NewErrorResponse(401,"Invalid session"));
+		return;
+	}
+
+	// get data
+	data, errGet := ph.svc.GetTransactionHistory(c,userID);
+	if errGet != nil{
+		c.JSON(errGet.Code,errGet);
+		return;
+	}
+	
+	c.JSON(200,shared.NewSuccessResponse(200,"Payment history successfully retrieved", data));
 }
 
 func (ph *PaymentHandler) PostManualSync(c *gin.Context) {
 	// Mengambil status real-time dari API Payment Gateway lalu melakukan pembaruan di DB lokal apabila webhook meleset.
+
 }
 
 func (ph *PaymentHandler) RegisterRoutes(r gin.IRouter) {

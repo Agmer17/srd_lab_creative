@@ -166,5 +166,36 @@ func (ps *PaymentService) GetTransactionDetail (ctx context.Context, userID, pay
 		}
 		return model.Payment{}, shared.NewErrorResponse(500, "something went wrong while getting the payment data, try again!");
 	}
+
+	// lazy updatee
+	if data.Status == "unpaid" && data.ExpiredAt != nil && time.Now().After(*data.ExpiredAt) {
+		data.Status = "expired"
+	}
 	return data,nil;
+}
+
+func (ps *PaymentService) GetTransactionHistory (ctx context.Context, userID uuid.UUID) ([]model.Payment, *shared.ErrorResponse){
+	// verify id real atau engga
+	_, err := ps.repo.CheckUserExist(ctx,userID);
+	if err != nil {
+		if errors.Is(err, ErrUserNotFound) { 
+			return []model.Payment{}, shared.NewErrorResponse(404, "User does not exist")
+		}
+		
+		return []model.Payment{}, shared.NewErrorResponse(500, "something went wrong while checking the user data try again!")
+	}
+	// ambil data dari db
+	rawData,getErr := ps.repo.GetAllPaymentsByUserID(ctx,userID);
+	if getErr != nil {
+		return []model.Payment{}, shared.NewErrorResponse(500, "something went wrong while checking the payment data try again!");
+	}
+	
+	// edit yang expired datanya
+	for i := range rawData{
+		if rawData[i].Status == "unpaid" && rawData[i].ExpiredAt != nil && time.Now().After(*rawData[i].ExpiredAt){
+			rawData[i].Status = "expired";
+		}
+	}
+	// return
+	return rawData,nil;
 }
