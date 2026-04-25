@@ -59,8 +59,11 @@ func (rvp *RevisionRepository) CreateRevision(ctx context.Context, projectId uui
 func (rvp *RevisionRepository) UpdateRevisionStatus(ctx context.Context, id uuid.UUID, status string) (model.ProjectRevision, error) {
 
 	data, err := rvp.db.UpdateRevisionStatus(ctx, sqlcgen.UpdateRevisionStatusParams{
-		ID:     id,
-		Status: status,
+		ID: id,
+		Status: sqlcgen.NullRevisionStatusEnum{
+			RevisionStatusEnum: sqlcgen.RevisionStatusEnum(status),
+			Valid:              true,
+		},
 	})
 
 	if err != nil {
