@@ -43,12 +43,14 @@ func NewServiceConfigs(ctx context.Context, googleClientId string, googleSecret 
 
 	memberService := project.NewProjectMemberService(ctx, rpf.ProjectMemberRepository, rdb)
 	progressService := project.NewProgressService(rpf.ProgressRepository)
+	revisonService := project.NewRevisionService(rpf.RevisionRepository)
 
 	projectService := project.NewProjectService(
 		rpf.ProjectRepository,
 		orderService,
 		memberService,
 		progressService,
+		revisonService,
 	)
 
 	wshub := ws.NewWebsocketHub(mel)

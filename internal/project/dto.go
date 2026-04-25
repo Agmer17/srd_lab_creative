@@ -47,3 +47,12 @@ type updateProgressRequest struct {
 	IsComplete      *bool    `json:"is_completed" binding:"omitempty"`
 	ProjectMemberId string   `json:"project_member_id" binding:"required,uuid"`
 }
+
+type createRevisionRequest struct {
+	Title  string `json:"title" binding:"required,alphanumspace"`
+	Reason string `json:"reason" binding:"required"`
+}
+
+type updateRevisionRequest struct {
+	Status string `json:"status" binding:"required,oneof=pending accepted rejected"`
+}

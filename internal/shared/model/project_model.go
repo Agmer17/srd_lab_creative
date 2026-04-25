@@ -67,3 +67,24 @@ func MapProjectDataToModel(dbProject sqlcgen.Project) Project {
 		UpdatedAt:            dbProject.UpdatedAt,
 	}
 }
+
+func MapRevisionToModel(gen sqlcgen.RevisionRequest) ProjectRevision {
+
+	return ProjectRevision{
+		Id:        gen.ID,
+		ProjectId: gen.ProjectID,
+		Title:     gen.Title,
+		Reason:    gen.Reason,
+		Status:    gen.Status,
+		CreatedAt: gen.CreatedAt,
+	}
+}
+
+func ListGenToRevision(gen []sqlcgen.RevisionRequest) []ProjectRevision {
+	var data []ProjectRevision = make([]ProjectRevision, len(gen))
+	for i, v := range gen {
+		data[i] = MapRevisionToModel(v)
+	}
+
+	return data
+}

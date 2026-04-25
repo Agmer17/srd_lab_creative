@@ -16,14 +16,23 @@ type ProjectService struct {
 	orderService    *order.OrderService
 	memberService   *ProjectMemberService
 	progressService *ProgressService
+	revisionService *RevisionService
 }
 
-func NewProjectService(repo *ProjectRepository, orderSvc *order.OrderService, memSvc *ProjectMemberService, progSvc *ProgressService) *ProjectService {
+func NewProjectService(
+	repo *ProjectRepository,
+	orderSvc *order.OrderService,
+	memSvc *ProjectMemberService,
+	progSvc *ProgressService,
+	revSvc *RevisionService,
+) *ProjectService {
+
 	return &ProjectService{
 		projectRepo:     repo,
 		orderService:    orderSvc,
 		memberService:   memSvc,
 		progressService: progSvc,
+		revisionService: revSvc,
 	}
 }
 
@@ -212,7 +221,7 @@ func (ps *ProjectService) GetProgressFromProject(ctx context.Context, id uuid.UU
 		return []model.ProjectProgress{}, shared.NewErrorResponse(500, "something wrong while trying to get user data")
 	}
 
-	if !own || !mem {
+	if !own && !mem {
 		return []model.ProjectProgress{}, shared.NewErrorResponse(403, "access denied! you can't access this data")
 	}
 
@@ -250,4 +259,55 @@ func (ps *ProjectService) UpdateProjectProgress(
 ) (model.ProjectProgress, *shared.ErrorResponse) {
 
 	return ps.progressService.UpdateProgressData(ctx, id, dto)
+}
+
+func (ps *ProjectService) GetRevisionFromProject(ctx context.Context, curr uuid.UUID, projectId uuid.UUID) ([]model.ProjectRevision, *shared.ErrorResponse) {
+
+	own, mem, err := ps.memberService.validateOwnerOrMember(ctx, curr, projectId)
+	if err != nil {
+		return []model.ProjectRevision{}, shared.NewErrorResponse(500, "something wrong while trying to get user data")
+	}
+
+	if !own && !mem {
+		return []model.ProjectRevision{}, shared.NewErrorResponse(403, "access denied! you can't access this data")
+	}
+
+	return ps.revisionService.GetRevisionFromProject(ctx, projectId)
+}
+
+func (ps *ProjectService) CreateProjectRevision(
+	ctx context.Context,
+	projectId uuid.UUID,
+	curr uuid.UUID,
+	dto createRevisionRequest,
+) (model.ProjectRevision, *shared.ErrorResponse) {
+
+	projectData, getErr := ps.GetDetailById(ctx, projectId, curr)
+	if getErr != nil {
+		return model.ProjectRevision{}, getErr
+	}
+
+	if projectData.OrderData.ID == curr {
+		return model.ProjectRevision{}, shared.NewErrorResponse(403, "you are forbidden to do this operation!")
+	}
+
+	if projectData.Status != "in_progress" || projectData.Status == "in_review" {
+
+		return model.ProjectRevision{}, shared.NewErrorResponse(409, "you can't request revision to complete or archieved project")
+	}
+
+	return ps.revisionService.CreateNewRevisionn(ctx, projectId, dto)
+}
+
+func (ps *ProjectService) UpdateRevisionStatus(ctx context.Context, curr uuid.UUID, projectId uuid.UUID, id uuid.UUID, status string) (model.ProjectRevision, *shared.ErrorResponse) {
+	own, mem, err := ps.memberService.validateOwnerOrMember(ctx, curr, projectId)
+	if err != nil {
+		return model.ProjectRevision{}, shared.NewErrorResponse(500, "something wrong while trying to get user data")
+	}
+
+	if !own && !mem {
+		return model.ProjectRevision{}, shared.NewErrorResponse(403, "access denied! you can't access this data")
+	}
+
+	return ps.revisionService.UpdateProjectRevision(ctx, id, status)
 }

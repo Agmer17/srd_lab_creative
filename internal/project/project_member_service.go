@@ -152,6 +152,7 @@ func (ps *ProjectMemberService) validateOwnerOrMember(
 
 	data, err := ps.rdb.HGetAll(ctx, hashKey).Result()
 	if err != nil {
+		fmt.Println(err)
 		return false, false, err
 	}
 

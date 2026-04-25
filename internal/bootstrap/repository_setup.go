@@ -21,6 +21,7 @@ type RepositoryConfigs struct {
 	ProjectRepository       *project.ProjectRepository
 	ProjectMemberRepository *project.ProjectMemberRepository
 	ProgressRepository      *project.ProgresRepository
+	RevisionRepository      *project.RevisionRepository
 }
 
 func NewRepositoryConfigs(q *sqlcgen.Queries) *RepositoryConfigs {
@@ -35,6 +36,8 @@ func NewRepositoryConfigs(q *sqlcgen.Queries) *RepositoryConfigs {
 	projectMemberRepo := project.NewProjectMemberRepository(q)
 	progressRepo := project.NewProgresRepository(q)
 
+	revisionRepo := project.NewRevisionRepository(q)
+
 	return &RepositoryConfigs{
 		AuthRepository:          authRepo,
 		UserRepository:          userRepo,
@@ -45,6 +48,7 @@ func NewRepositoryConfigs(q *sqlcgen.Queries) *RepositoryConfigs {
 		ProjectRepository:       projectRepo,
 		ProjectMemberRepository: projectMemberRepo,
 		ProgressRepository:      progressRepo,
+		RevisionRepository:      revisionRepo,
 	}
 
 }

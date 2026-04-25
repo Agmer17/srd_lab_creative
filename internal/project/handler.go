@@ -353,6 +353,96 @@ func (ph *ProjectHandler) PatchUpdateProgress(c *gin.Context) {
 	c.JSON(200, shared.NewSuccessResponse(200, "successfully updating the project data", data))
 }
 
+func (ph *ProjectHandler) GetRevisionFromProject(c *gin.Context) {
+	param := c.Param("projectId")
+	projectId, err := uuid.Parse(param)
+	if err != nil {
+		c.JSON(400, shared.NewErrorResponse(400, "invalid project id"))
+		return
+	}
+
+	userId, _ := middleware.GetUserID(c)
+
+	data, insErr := ph.service.GetRevisionFromProject(c.Request.Context(), userId, projectId)
+	if insErr != nil {
+		c.JSON(insErr.Code, insErr)
+		return
+
+	}
+
+	c.JSON(200, shared.NewSuccessResponse(200, "successfully getting revision data", data))
+}
+
+func (ph *ProjectHandler) PostCreateRevision(c *gin.Context) {
+
+	param := c.Param("projectId")
+	projectId, err := uuid.Parse(param)
+	if err != nil {
+		c.JSON(400, shared.NewErrorResponse(400, "invalid project id"))
+		return
+	}
+
+	userId, _ := middleware.GetUserID(c)
+
+	var req createRevisionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		errMap, isValid := pkg.ParseValidationErrors(err)
+
+		if isValid {
+			c.JSON(400, shared.NewErrorResponse(400, errMap))
+			return
+		}
+
+		c.JSON(400, shared.NewErrorResponse(400, "invalid request body"))
+		return
+	}
+
+	data, insErr := ph.service.CreateProjectRevision(c.Request.Context(), projectId, userId, req)
+	if insErr != nil {
+		c.JSON(insErr.Code, insErr)
+	}
+
+	c.JSON(200, shared.NewSuccessResponse(200, "successfully creating new revision", data))
+}
+
+func (ph *ProjectHandler) PatchUpdateRevisionStatus(c *gin.Context) {
+
+	param := c.Param("projectId")
+	projectId, err := uuid.Parse(param)
+	if err != nil {
+		c.JSON(400, shared.NewErrorResponse(400, "invalid project id"))
+		return
+	}
+	paramId := c.Param("id")
+	revisionId, err := uuid.Parse(paramId)
+	if err != nil {
+		c.JSON(400, shared.NewErrorResponse(400, "invalid project id"))
+		return
+	}
+
+	userId, _ := middleware.GetUserID(c)
+
+	var req updateRevisionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		errMap, isValid := pkg.ParseValidationErrors(err)
+
+		if isValid {
+			c.JSON(400, shared.NewErrorResponse(400, errMap))
+			return
+		}
+
+		c.JSON(400, shared.NewErrorResponse(400, "invalid request body"))
+		return
+	}
+
+	data, uptErr := ph.service.UpdateRevisionStatus(c.Request.Context(), userId, projectId, revisionId, req.Status)
+	if uptErr != nil {
+		c.JSON(uptErr.Code, uptErr)
+	}
+
+	c.JSON(200, shared.NewSuccessResponse(200, "successfully updating revision status", data))
+}
+
 func (ph *ProjectHandler) RegisterRoutes(r gin.IRouter) {
 
 	projectApi := r.Group("/project")
@@ -369,16 +459,22 @@ func (ph *ProjectHandler) RegisterRoutes(r gin.IRouter) {
 
 	// member client endpoint
 	projectApi.GET("/:projectId/members", ph.HandleGetAllMember)
+	projectApi.GET("/:projectId/progress", ph.GetProgressFromProject)
 
 	// admin members endpoint
 	projectAdmin.POST("/:projectId/members/add", ph.PostNewMember)
 	projectAdmin.PATCH("/:projectId/members/update", ph.PatchMemberData)
 	projectAdmin.DELETE("/:projectId/members/delete/:memberId", ph.DeleteProjectMember)
 
-	// progress endpoint
-	projectApi.GET("/:projectId/progress", ph.GetProgressFromProject)
-	projectApi.POST("/:projectId/progress/add", ph.PostCreateProgress)
-	projectApi.DELETE("/:projectId/progress/delete/:id", ph.DeleteProjectProgress)
-	projectApi.PATCH("/:projectId/progress/update/:id", ph.PatchUpdateProgress)
+	// progress admin endpoint
+	projectAdmin.POST("/:projectId/progress/add", ph.PostCreateProgress)
+	projectAdmin.DELETE("/:projectId/progress/delete/:id", ph.DeleteProjectProgress)
+	projectAdmin.PATCH("/:projectId/progress/update/:id", ph.PatchUpdateProgress)
+
+	// ================== revision ====================
+	projectApi.GET("/:projectId/revision", ph.GetRevisionFromProject)
+	projectApi.POST("/:projectId/revision/add", ph.PostCreateRevision)
+	projectAdmin.PATCH("/:projectId/revision/update/:id", ph.PatchUpdateRevisionStatus)
+	// ================================================
 
 }
