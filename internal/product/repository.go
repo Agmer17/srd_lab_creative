@@ -60,13 +60,21 @@ func (pr *ProductRepository) CreateProduct (ctx context.Context, req createProdu
 }
 
 func (pr *ProductRepository) UpdateProduct (ctx context.Context,id uuid.UUID,req updateProductRequest) (model.Product,error){
+	var statusEnum sqlcgen.NullProductStatusEnum
+	if req.Status != nil {
+		statusEnum = sqlcgen.NullProductStatusEnum{
+			ProductStatusEnum: sqlcgen.ProductStatusEnum(*req.Status),
+			Valid:             true,
+		}
+	}
+	
 	data,err := pr.db.UpdateProduct(ctx,sqlcgen.UpdateProductParams{
 		ID: id,
 		Name: req.Name,
 		Slug: req.Slug,
 		Description: req.Description,
 		Price: req.Price,
-		Status: req.Status,
+		Status: statusEnum,
 		IsFeatured: req.IsFeatured,
 	});
 	if err != nil{

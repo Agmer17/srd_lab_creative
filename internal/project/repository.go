@@ -125,11 +125,19 @@ func (pr *ProjectRepository) GetAllProjects(ctx context.Context) ([]model.Projec
 
 func (pr *ProjectRepository) UpdateProject(ctx context.Context, id uuid.UUID, dto updateProjectRequest) (model.Project, error) {
 
+	var statusEnum sqlcgen.NullProjectStatusEnum
+	if dto.Status != nil {
+		statusEnum = sqlcgen.NullProjectStatusEnum{
+			ProjectStatusEnum: sqlcgen.ProjectStatusEnum(*dto.Status),
+			Valid:             true,
+		}
+	}
+
 	data, err := pr.db.UpdateProject(ctx, sqlcgen.UpdateProjectParams{
 		ID:                   id,
 		Name:                 dto.Name,
 		Description:          dto.Description,
-		Status:               dto.Status,
+		Status:               statusEnum,
 		AllowedRevisionCount: dto.AllowedRevision,
 		EndDate:              dto.EndDate,
 	})

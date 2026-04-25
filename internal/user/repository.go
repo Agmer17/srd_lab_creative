@@ -80,9 +80,17 @@ func (ur *UserRepository) UpdateUserGlobalRole(ctx context.Context, role string,
 }
 
 func (ur *UserRepository) UpdateUser(ctx context.Context, data UpdateUserDto, id uuid.UUID) (model.User, error) {
+	var genderEnum sqlcgen.NullUserGender
+	if data.Gender != nil {
+		genderEnum = sqlcgen.NullUserGender{
+			UserGender: sqlcgen.UserGender(*data.Gender),
+			Valid:      true,
+		}
+	}
+	
 	updatedData, err := ur.db.UpdateUser(ctx, sqlcgen.UpdateUserParams{
 		FullName:    data.FullName,
-		Gender:      data.Gender,
+		Gender:      genderEnum,
 		PhoneNumber: data.PhoneNumber,
 		ID:          id,
 	})
