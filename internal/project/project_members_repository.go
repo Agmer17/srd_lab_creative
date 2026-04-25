@@ -69,7 +69,7 @@ func (pmr *ProjectMemberRepository) CreateProjectMember(ctx context.Context, md 
 
 func (pmr *ProjectMemberRepository) GetMemberFromProject(ctx context.Context, projectId uuid.UUID) ([]model.ProjectMember, error) {
 
-	data, err := pmr.db.ListProjectMembersWithUser(ctx, projectId)
+	data, err := pmr.db.GetActiveProjectMembers(ctx, projectId)
 	if err != nil {
 		return []model.ProjectMember{}, err
 	}
@@ -94,7 +94,6 @@ func (pmr *ProjectMemberRepository) GetMemberFromProject(ctx context.Context, pr
 			ProjectID: v.ProjectID,
 			IsOwner:   v.IsOwner,
 			JoinedAt:  v.JoinedAt,
-			LeftAt:    v.LeftAt,
 			User:      userData,
 			Role:      roleData,
 		}
@@ -204,4 +203,41 @@ func (pmr *ProjectMemberRepository) RemoveFromProject(ctx context.Context, toRem
 	}
 
 	return nil
+}
+
+func (pmr *ProjectMemberRepository) getAllMembers(ctx context.Context) ([]model.ProjectMember, error) {
+
+	data, err := pmr.db.GetAllMember(ctx)
+	if err != nil {
+		return []model.ProjectMember{}, err
+	}
+
+	var listData []model.ProjectMember = make([]model.ProjectMember, len(data))
+	for i, v := range data {
+
+		var userData model.User
+		err := json.Unmarshal(v.User, &userData)
+		if err != nil {
+			return []model.ProjectMember{}, err
+		}
+
+		var roleData model.ProjectRole
+		umsErr := json.Unmarshal(v.Role, &roleData)
+		if umsErr != nil {
+			return []model.ProjectMember{}, err
+		}
+
+		listData[i] = model.ProjectMember{
+			ID:        v.ID,
+			ProjectID: v.ProjectID,
+			IsOwner:   v.IsOwner,
+			JoinedAt:  v.JoinedAt,
+			LeftAt:    v.LeftAt,
+			User:      userData,
+			Role:      roleData,
+		}
+
+	}
+
+	return listData, nil
 }

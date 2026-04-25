@@ -125,6 +125,84 @@ func (q *Queries) GetActiveProjectMembers(ctx context.Context, projectID uuid.UU
 	return items, nil
 }
 
+const getAllMember = `-- name: GetAllMember :many
+SELECT 
+    pm.id,
+    pm.project_id,
+    pm.user_id,
+    pm.role_id,
+    pm.is_owner,
+    pm.joined_at,
+    pm.left_at,
+
+    jsonb_build_object(
+        'id', u.id,
+        'full_name', u.full_name,
+        'email', u.email,
+        'gender', u.gender,
+        'profile_picture', u.profile_picture,
+        'global_role', u.global_role,
+        'created_at', u.created_at,
+        'updated_at', u.updated_at
+    ) AS user,
+
+    jsonb_build_object(
+        'id', r.id,
+        'role_name', r.name,
+        'created_at', r.created_at
+    ) AS role
+
+FROM project_members pm
+JOIN users u 
+    ON u.id = pm.user_id
+   AND u.deleted_at IS NULL
+
+JOIN roles r 
+    ON r.id = pm.role_id
+`
+
+type GetAllMemberRow struct {
+	ID        uuid.UUID
+	ProjectID uuid.UUID
+	UserID    uuid.UUID
+	RoleID    uuid.UUID
+	IsOwner   bool
+	JoinedAt  time.Time
+	LeftAt    *time.Time
+	User      []byte
+	Role      []byte
+}
+
+func (q *Queries) GetAllMember(ctx context.Context) ([]GetAllMemberRow, error) {
+	rows, err := q.db.Query(ctx, getAllMember)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAllMemberRow
+	for rows.Next() {
+		var i GetAllMemberRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.UserID,
+			&i.RoleID,
+			&i.IsOwner,
+			&i.JoinedAt,
+			&i.LeftAt,
+			&i.User,
+			&i.Role,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getMemberDataByUserId = `-- name: GetMemberDataByUserId :one
 SELECT 
     pm.id,

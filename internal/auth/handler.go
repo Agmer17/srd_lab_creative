@@ -9,7 +9,8 @@ import (
 )
 
 const oneWeek = 7 * 24 * 60 * 60
-const frontEndRedirect = "http://localhost:5173/account/me"
+
+// const frontEndRedirect = "http://localhost:5173/account/me"
 
 type AuthHandler struct {
 	service *AuthService

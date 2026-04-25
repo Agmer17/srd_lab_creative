@@ -102,8 +102,7 @@ CREATE TABLE project_members (
     role_id    UUID      NOT NULL REFERENCES roles(id)    ON DELETE RESTRICT,
     is_owner   BOOLEAN   NOT NULL DEFAULT FALSE,
     joined_at  TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    left_at    TIMESTAMPTZ NULL,  
-    UNIQUE (project_id, user_id)
+    left_at    TIMESTAMPTZ NULL
 );
 
 CREATE TABLE progresses (

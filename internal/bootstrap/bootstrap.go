@@ -1,6 +1,7 @@
 package bootstrap
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/Agmer17/srd_lab_creative/internal/auth"
@@ -15,6 +16,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/olahol/melody"
+	"github.com/redis/go-redis/v9"
 )
 
 type App struct {
@@ -23,7 +25,7 @@ type App struct {
 	Repositories *RepositoryConfigs
 }
 
-func NewApp(router *gin.Engine, googleClient string, googleSecret string, pool *pgxpool.Pool) *App {
+func NewApp(ctx context.Context, router *gin.Engine, googleClient string, googleSecret string, pool *pgxpool.Pool, redisCli *redis.Client) *App {
 	db := sqlcgen.New(pool)
 
 	// setup melody
@@ -32,11 +34,19 @@ func NewApp(router *gin.Engine, googleClient string, googleSecret string, pool *
 	mel.Upgrader.CheckOrigin = func(r *http.Request) bool {
 		return true
 	}
+
 	// setup reposiotry
 	repoConfigs := NewRepositoryConfigs(db)
 
 	// setup service
-	serviceConfigs := NewServiceConfigs(googleClient, googleSecret, repoConfigs, mel)
+	serviceConfigs := NewServiceConfigs(
+		ctx,
+		googleClient,
+		googleSecret,
+		repoConfigs,
+		mel,
+		redisCli,
+	)
 
 	// generate sama daftarin ke router
 	authHandler := auth.NewAuthHandler(serviceConfigs.AuthService)

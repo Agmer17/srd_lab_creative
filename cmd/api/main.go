@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
+	"github.com/redis/go-redis/v9"
 )
 
 func main() {
@@ -23,6 +24,7 @@ func main() {
 	googleClientSecret := os.Getenv("GOOGLE_OAUTH_SECRET")
 	databaseUrl := os.Getenv("DATABASE_URL")
 	jwtSecret := os.Getenv("JWT_SECRET")
+	redisUrl := os.Getenv("REDIS_URL")
 
 	pkg.JwtInit(jwtSecret)
 
@@ -49,6 +51,19 @@ func main() {
 	}
 	// =================================
 
+	// redis setup
+	// setup redis client
+	rdb := redis.NewClient(&redis.Options{
+		Addr:     redisUrl,
+		Password: "",
+		DB:       0,
+	})
+	_, err = rdb.Ping(mainAppCtx).Result()
+	if err != nil {
+		panic(err)
+	}
+	// =========
+
 	r := gin.Default()
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:5173"},
@@ -57,7 +72,7 @@ func main() {
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 	}))
-	app := bootstrap.NewApp(r, googleClientId, googleClientSecret, pool)
+	app := bootstrap.NewApp(mainAppCtx, r, googleClientId, googleClientSecret, pool, rdb)
 	app.Run()
 
 }

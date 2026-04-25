@@ -4,20 +4,39 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/Agmer17/srd_lab_creative/internal/shared"
 	"github.com/Agmer17/srd_lab_creative/internal/shared/model"
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 )
 
 type ProjectMemberService struct {
 	memberRepo *ProjectMemberRepository
+	rdb        *redis.Client
 }
 
-func NewProjectMemberService(repo *ProjectMemberRepository) *ProjectMemberService {
-	return &ProjectMemberService{
+func NewProjectMemberService(ctx context.Context, repo *ProjectMemberRepository, red *redis.Client) *ProjectMemberService {
+	// load cache dulu ke redisnya
+
+	memSvc := &ProjectMemberService{
 		memberRepo: repo,
+		rdb:        red,
 	}
+
+	data, err := memSvc.memberRepo.getAllMembers(ctx)
+	if err != nil {
+		fmt.Println("failed to iniate redis cache : " + err.Error())
+	}
+
+	err = memSvc.setAllMembersRedis(ctx, data)
+	if err != nil {
+		fmt.Println("failed to iniate redis cache : " + err.Error())
+	}
+
+	return memSvc
+
 }
 
 func (pms *ProjectMemberService) addNewMember(ctx context.Context, req addNewMemberDto) ([]model.ProjectMember, *shared.ErrorResponse) {
@@ -123,26 +142,47 @@ func (pms *ProjectMemberService) GetAllMemberFromProjectId(ctx context.Context, 
 }
 
 // owner, member, error
-func (ps *ProjectMemberService) validateOwnerOrMember(ctx context.Context, userId uuid.UUID, projectId uuid.UUID) (bool, bool, error) {
+func (ps *ProjectMemberService) validateOwnerOrMember(
+	ctx context.Context,
+	userId uuid.UUID,
+	projectId uuid.UUID,
+) (bool, bool, error) {
+
+	hashKey := "member:" + projectId.String() + ":" + userId.String()
+
+	data, err := ps.rdb.HGetAll(ctx, hashKey).Result()
+	if err != nil {
+		return false, false, err
+	}
+
+	if len(data) > 0 {
+		fmt.Println("\n\n\n\nCACHE HIT")
+		isOwner := data["is_owner"] == "1" || data["is_owner"] == "true"
+		return isOwner, true, nil
+	}
+
 	tempData, err := ps.memberRepo.GetMemberDataByUserId(ctx, userId, projectId)
 	if err != nil {
 		if errors.Is(err, memberNotFound) {
-			fmt.Println("ERROR VALIDASI : ", err)
 			return false, false, nil
 		}
 		return false, false, err
 	}
 
 	if tempData.ProjectID != projectId {
-		fmt.Println(tempData)
 		return false, false, nil
 	}
 
-	if !tempData.IsOwner {
-		return false, true, nil
+	err = ps.setOneMembersRedis(ctx, tempData)
+	if err != nil {
+		fmt.Println("failed to set cache:", err)
 	}
 
-	return true, true, nil
+	if tempData.IsOwner {
+		return true, true, nil
+	}
+
+	return false, true, nil
 }
 
 func (ps *ProjectMemberService) RemoveUserFromProject(ctx context.Context, toRemove uuid.UUID) *shared.ErrorResponse {
@@ -156,4 +196,48 @@ func (ps *ProjectMemberService) RemoveUserFromProject(ctx context.Context, toRem
 	}
 
 	return nil
+}
+
+func (ps *ProjectMemberService) setAllMembersRedis(ctx context.Context, m []model.ProjectMember) error {
+	pipe := ps.rdb.TxPipeline()
+	for _, v := range m {
+		hashKey := "member:" + v.ProjectID.String() + ":" + v.User.ID.String()
+		setKey := "member:" + v.ProjectID.String()
+
+		pipe.SAdd(ctx, setKey, v.User.ID.String())
+
+		pipe.HSet(ctx, hashKey, map[string]interface{}{
+			"id":         v.ID.String(),
+			"project_id": v.ProjectID.String(),
+			"user_id":    v.User.ID.String(),
+			"is_owner":   v.IsOwner,
+		})
+
+		pipe.Expire(ctx, hashKey, time.Hour)
+		pipe.Expire(ctx, setKey, time.Hour)
+	}
+
+	_, err := pipe.Exec(ctx)
+	return err
+}
+
+func (ps *ProjectMemberService) setOneMembersRedis(ctx context.Context, data model.ProjectMember) error {
+
+	pipe := ps.rdb.TxPipeline()
+	hashKey := "member:" + data.ProjectID.String() + ":" + data.User.ID.String()
+	setKey := "member:" + data.ProjectID.String()
+
+	pipe.SAdd(ctx, setKey, data.User.ID.String())
+	pipe.HSet(ctx, hashKey, map[string]interface{}{
+		"id":         data.ID.String(),
+		"project_id": data.ProjectID.String(),
+		"user_id":    data.User.ID.String(),
+		"is_owner":   data.IsOwner,
+	})
+
+	pipe.Expire(ctx, hashKey, time.Hour)
+	pipe.Expire(ctx, setKey, time.Hour)
+
+	_, err := pipe.Exec(ctx)
+	return err
 }
