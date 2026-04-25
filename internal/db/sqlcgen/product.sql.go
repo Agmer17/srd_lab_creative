@@ -469,7 +469,7 @@ type UpdateProductParams struct {
 	Slug        *string
 	Description *string
 	Price       *float64
-	Status      interface{}
+	Status      NullProductStatusEnum
 	IsFeatured  *bool
 }
 

@@ -17,7 +17,7 @@ func NewPaymentHandler(s *PaymentService) *PaymentHandler {
 	}
 }
 
-func (ph *PaymentHandler) PostCreateTransaction(c *gin.Context) {
+func (ph *PaymentHandler) PostCreatePayment(c *gin.Context) {
 	// get user id
 	userID, ok := middleware.GetUserID(c);
 	if !ok {
@@ -50,7 +50,7 @@ func (ph *PaymentHandler) PostCreateTransaction(c *gin.Context) {
 		c.JSON(createErr.Code,createErr);
 		return;
 	}
-	c.JSON(200, shared.NewSuccessResponse(200,"Transaction successfully created",data));
+	c.JSON(200, shared.NewSuccessResponse(200,"Payment successfully created",data));
 	return;
 
 }
@@ -59,15 +59,40 @@ func (ph *PaymentHandler) PostWebhookListener(c *gin.Context) {
 	// Endpoint yang dipanggil oleh Payment Gateway ketika ada konfirmasi mutasi bayar (sukses/gagal/kadaluarsa).
 }
 
-func (ph *PaymentHandler) GetTransactionDetail(c *gin.Context) {
+func (ph *PaymentHandler) GetPaymentDetail(c *gin.Context) {
 	// Menampilkan rincian dari DB lokal.
+	// get user id
+	userID, ok := middleware.GetUserID(c);
+	if !ok {
+		c.JSON(401,shared.NewErrorResponse(401,"Invalid session"));
+		return;
+	}
+	// get payment id
+	path := c.Param("payment_id");
+	paymentID, err := uuid.Parse(path);
+	if err != nil {
+		c.JSON(400, shared.NewErrorResponse(400, "invalid id params"));
+		return;
+	}
+
+	// get data transaksi
+	data, getErr := ph.svc.GetTransactionDetail(c,userID,paymentID);
+	if getErr != nil{
+		c.JSON(getErr.Code,getErr);
+		return;
+	}
+
+	
+	c.JSON(200, shared.NewSuccessResponse(200,"Payment successfully retrieved",data));
+	return;
+
 }
 
-func (ph *PaymentHandler) PostCancelTransaction(c *gin.Context) {
+func (ph *PaymentHandler) PostCancelPayment(c *gin.Context) {
 	// Membatalkan transaksi di Payment Gateway dan melakukan soft-delete (deleted_at + status canceled) di DB lokal.
 }
 
-func (ph *PaymentHandler) HandleGetTransactionHistory(c *gin.Context) {
+func (ph *PaymentHandler) HandleGetPaymentHistory(c *gin.Context) {
 	// Menampilkan list history transaksi user.
 }
 
@@ -94,17 +119,17 @@ func (ph *PaymentHandler) RegisterRoutes(r gin.IRouter) {
 	*/
 
 	// Create Transaction
-	protectedPaymentApi.POST("/create/:order_id", ph.PostCreateTransaction);
+	protectedPaymentApi.POST("/create/:order_id", ph.PostCreatePayment);
 
 	// user idnya diambil dari middleware aja terus dicek
 	// Transaction History
-	protectedPaymentApi.GET("/history", ph.HandleGetTransactionHistory);
+	protectedPaymentApi.GET("/history", ph.HandleGetPaymentHistory);
 
 	// Get Transaction Detail
-	protectedPaymentApi.GET("/detail/:payment_id", ph.GetTransactionDetail);
+	protectedPaymentApi.GET("/detail/:payment_id", ph.GetPaymentDetail);
 
 	// Cancel Transaction
-	protectedPaymentApi.POST("/cancel/:payment_id", ph.PostCancelTransaction);
+	protectedPaymentApi.POST("/cancel/:payment_id", ph.PostCancelPayment);
 
 	// Manual Sync
 	protectedPaymentApi.POST("/sync/:payment_id", ph.PostManualSync);

@@ -7,6 +7,14 @@ WHERE o.user_id = $1
 ORDER BY p.created_at DESC 
 LIMIT 1;
 
+-- name: GetPaymentById :one
+SELECT p.* FROM payments p
+JOIN orders o ON o.id = p.order_id
+WHERE p.id = $1 
+  AND o.user_id = $2
+  AND p.deleted_at IS NULL
+LIMIT 1;
+
 
 -- name: CreateNewPayment :one
 INSERT INTO payments (

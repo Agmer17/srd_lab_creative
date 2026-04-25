@@ -83,10 +83,44 @@ func (q *Queries) GetLatestPayment(ctx context.Context, arg GetLatestPaymentPara
 	return i, err
 }
 
+const getPaymentById = `-- name: GetPaymentById :one
+SELECT p.id, p.order_id, p.method, p.status, p.amount, p.fee, p.total_payment, p.payment_number, p.expired_at, p.paid_at, p.created_at, p.deleted_at FROM payments p
+JOIN orders o ON o.id = p.order_id
+WHERE p.id = $1 
+  AND o.user_id = $2
+  AND p.deleted_at IS NULL
+LIMIT 1
+`
+
+type GetPaymentByIdParams struct {
+	ID     uuid.UUID
+	UserID uuid.UUID
+}
+
+func (q *Queries) GetPaymentById(ctx context.Context, arg GetPaymentByIdParams) (Payment, error) {
+	row := q.db.QueryRow(ctx, getPaymentById, arg.ID, arg.UserID)
+	var i Payment
+	err := row.Scan(
+		&i.ID,
+		&i.OrderID,
+		&i.Method,
+		&i.Status,
+		&i.Amount,
+		&i.Fee,
+		&i.TotalPayment,
+		&i.PaymentNumber,
+		&i.ExpiredAt,
+		&i.PaidAt,
+		&i.CreatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
 const setPaymentExpired = `-- name: SetPaymentExpired :exec
 UPDATE payments 
 SET 
-    status = 'failed'
+    status = 'expired'
 WHERE id = $1
 `
 

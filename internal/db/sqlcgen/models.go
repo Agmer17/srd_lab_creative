@@ -5,10 +5,315 @@
 package sqlcgen
 
 import (
+	"database/sql/driver"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+type GlobalRoleEnum string
+
+const (
+	GlobalRoleEnumADMIN GlobalRoleEnum = "ADMIN"
+	GlobalRoleEnumUSER  GlobalRoleEnum = "USER"
+)
+
+func (e *GlobalRoleEnum) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = GlobalRoleEnum(s)
+	case string:
+		*e = GlobalRoleEnum(s)
+	default:
+		return fmt.Errorf("unsupported scan type for GlobalRoleEnum: %T", src)
+	}
+	return nil
+}
+
+type NullGlobalRoleEnum struct {
+	GlobalRoleEnum GlobalRoleEnum
+	Valid          bool // Valid is true if GlobalRoleEnum is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullGlobalRoleEnum) Scan(value interface{}) error {
+	if value == nil {
+		ns.GlobalRoleEnum, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.GlobalRoleEnum.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullGlobalRoleEnum) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.GlobalRoleEnum), nil
+}
+
+type OrderStatusEnum string
+
+const (
+	OrderStatusEnumPending    OrderStatusEnum = "pending"
+	OrderStatusEnumProcessing OrderStatusEnum = "processing"
+	OrderStatusEnumCompleted  OrderStatusEnum = "completed"
+	OrderStatusEnumCancelled  OrderStatusEnum = "cancelled"
+)
+
+func (e *OrderStatusEnum) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = OrderStatusEnum(s)
+	case string:
+		*e = OrderStatusEnum(s)
+	default:
+		return fmt.Errorf("unsupported scan type for OrderStatusEnum: %T", src)
+	}
+	return nil
+}
+
+type NullOrderStatusEnum struct {
+	OrderStatusEnum OrderStatusEnum
+	Valid           bool // Valid is true if OrderStatusEnum is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullOrderStatusEnum) Scan(value interface{}) error {
+	if value == nil {
+		ns.OrderStatusEnum, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.OrderStatusEnum.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullOrderStatusEnum) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.OrderStatusEnum), nil
+}
+
+type PaymentStatusEnum string
+
+const (
+	PaymentStatusEnumUnpaid  PaymentStatusEnum = "unpaid"
+	PaymentStatusEnumPaid    PaymentStatusEnum = "paid"
+	PaymentStatusEnumFailed  PaymentStatusEnum = "failed"
+	PaymentStatusEnumExpired PaymentStatusEnum = "expired"
+)
+
+func (e *PaymentStatusEnum) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = PaymentStatusEnum(s)
+	case string:
+		*e = PaymentStatusEnum(s)
+	default:
+		return fmt.Errorf("unsupported scan type for PaymentStatusEnum: %T", src)
+	}
+	return nil
+}
+
+type NullPaymentStatusEnum struct {
+	PaymentStatusEnum PaymentStatusEnum
+	Valid             bool // Valid is true if PaymentStatusEnum is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullPaymentStatusEnum) Scan(value interface{}) error {
+	if value == nil {
+		ns.PaymentStatusEnum, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.PaymentStatusEnum.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullPaymentStatusEnum) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.PaymentStatusEnum), nil
+}
+
+type ProductStatusEnum string
+
+const (
+	ProductStatusEnumActive       ProductStatusEnum = "active"
+	ProductStatusEnumDraft        ProductStatusEnum = "draft"
+	ProductStatusEnumArchived     ProductStatusEnum = "archived"
+	ProductStatusEnumNotAvailable ProductStatusEnum = "not_available"
+)
+
+func (e *ProductStatusEnum) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ProductStatusEnum(s)
+	case string:
+		*e = ProductStatusEnum(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ProductStatusEnum: %T", src)
+	}
+	return nil
+}
+
+type NullProductStatusEnum struct {
+	ProductStatusEnum ProductStatusEnum
+	Valid             bool // Valid is true if ProductStatusEnum is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullProductStatusEnum) Scan(value interface{}) error {
+	if value == nil {
+		ns.ProductStatusEnum, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ProductStatusEnum.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullProductStatusEnum) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ProductStatusEnum), nil
+}
+
+type ProjectStatusEnum string
+
+const (
+	ProjectStatusEnumInProgress ProjectStatusEnum = "in_progress"
+	ProjectStatusEnumInReview   ProjectStatusEnum = "in_review"
+	ProjectStatusEnumCompleted  ProjectStatusEnum = "completed"
+	ProjectStatusEnumArchive    ProjectStatusEnum = "archive"
+)
+
+func (e *ProjectStatusEnum) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ProjectStatusEnum(s)
+	case string:
+		*e = ProjectStatusEnum(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ProjectStatusEnum: %T", src)
+	}
+	return nil
+}
+
+type NullProjectStatusEnum struct {
+	ProjectStatusEnum ProjectStatusEnum
+	Valid             bool // Valid is true if ProjectStatusEnum is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullProjectStatusEnum) Scan(value interface{}) error {
+	if value == nil {
+		ns.ProjectStatusEnum, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ProjectStatusEnum.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullProjectStatusEnum) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ProjectStatusEnum), nil
+}
+
+type RevisionStatusEnum string
+
+const (
+	RevisionStatusEnumPending  RevisionStatusEnum = "pending"
+	RevisionStatusEnumAccepted RevisionStatusEnum = "accepted"
+	RevisionStatusEnumRejected RevisionStatusEnum = "rejected"
+)
+
+func (e *RevisionStatusEnum) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = RevisionStatusEnum(s)
+	case string:
+		*e = RevisionStatusEnum(s)
+	default:
+		return fmt.Errorf("unsupported scan type for RevisionStatusEnum: %T", src)
+	}
+	return nil
+}
+
+type NullRevisionStatusEnum struct {
+	RevisionStatusEnum RevisionStatusEnum
+	Valid              bool // Valid is true if RevisionStatusEnum is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullRevisionStatusEnum) Scan(value interface{}) error {
+	if value == nil {
+		ns.RevisionStatusEnum, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.RevisionStatusEnum.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullRevisionStatusEnum) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.RevisionStatusEnum), nil
+}
+
+type UserGender string
+
+const (
+	UserGenderMale   UserGender = "male"
+	UserGenderFemale UserGender = "female"
+)
+
+func (e *UserGender) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = UserGender(s)
+	case string:
+		*e = UserGender(s)
+	default:
+		return fmt.Errorf("unsupported scan type for UserGender: %T", src)
+	}
+	return nil
+}
+
+type NullUserGender struct {
+	UserGender UserGender
+	Valid      bool // Valid is true if UserGender is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullUserGender) Scan(value interface{}) error {
+	if value == nil {
+		ns.UserGender, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.UserGender.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullUserGender) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.UserGender), nil
+}
 
 type Category struct {
 	ID          uuid.UUID

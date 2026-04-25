@@ -426,7 +426,7 @@ type UpdateProjectParams struct {
 	ID                   uuid.UUID
 	Name                 *string
 	Description          *string
-	Status               interface{}
+	Status               NullProjectStatusEnum
 	AllowedRevisionCount *int32
 	ActualStartDate      *time.Time
 	EndDate              *time.Time

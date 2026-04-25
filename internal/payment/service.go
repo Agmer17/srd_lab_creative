@@ -146,3 +146,25 @@ func (ps *PaymentService) AddTransaction (ctx context.Context, userID, orderID u
 	}
 	
 }
+
+func (ps *PaymentService) GetTransactionDetail (ctx context.Context, userID, paymentID uuid.UUID) (model.Payment, *shared.ErrorResponse){
+	
+	// verify id 
+	_, err := ps.repo.CheckUserExist(ctx,userID);
+	if err != nil {
+		if errors.Is(err, ErrUserNotFound) { 
+			return model.Payment{}, shared.NewErrorResponse(404, "User does not exist")
+		}
+		
+		return model.Payment{}, shared.NewErrorResponse(500, "something went wrong while checking the user data try again!")
+	}
+	// cari transaksinya
+	data,err := ps.repo.GetPaymentByID(ctx,userID,paymentID);
+	if err != nil {
+		if errors.Is(err, ErrPaymentNotFound){
+			return model.Payment{}, shared.NewErrorResponse(404, "Payment does not exist");
+		}
+		return model.Payment{}, shared.NewErrorResponse(500, "something went wrong while getting the payment data, try again!");
+	}
+	return data,nil;
+}

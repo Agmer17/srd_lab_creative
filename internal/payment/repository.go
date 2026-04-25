@@ -96,3 +96,17 @@ func (Pr *PaymentRepository) UpdateExpired(ctx context.Context,paymentID uuid.UU
 	}
 	return nil
 }
+
+func (Pr *PaymentRepository) GetPaymentByID(ctx context.Context, userID, paymentID uuid.UUID) (model.Payment,error){
+	data, err := Pr.db.GetPaymentById(ctx,sqlcgen.GetPaymentByIdParams{
+		ID: paymentID,
+		UserID: userID,
+	})
+	if err != nil{
+		if errors.Is(err,pgx.ErrNoRows){
+			return model.Payment{},ErrPaymentNotFound;	
+		}
+			return model.Payment{},err;
+	}
+	return model.MapToPaymentModel(data),nil;
+}

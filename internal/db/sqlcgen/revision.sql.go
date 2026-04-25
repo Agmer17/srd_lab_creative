@@ -100,7 +100,7 @@ RETURNING id, project_id, title, reason, status, created_at
 
 type UpdateRevisionStatusParams struct {
 	ID     uuid.UUID
-	Status interface{}
+	Status NullRevisionStatusEnum
 }
 
 func (q *Queries) UpdateRevisionStatus(ctx context.Context, arg UpdateRevisionStatusParams) (RevisionRequest, error) {

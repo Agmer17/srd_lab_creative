@@ -292,7 +292,7 @@ RETURNING id, global_role, full_name, email, phone_number, profile_picture, gend
 
 type UpdateUserParams struct {
 	FullName    *string
-	Gender      interface{}
+	Gender      NullUserGender
 	PhoneNumber *string
 	ID          uuid.UUID
 }
