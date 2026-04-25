@@ -10,10 +10,13 @@ import (
 	"github.com/Agmer17/srd_lab_creative/internal/db/sqlcgen"
 	"github.com/Agmer17/srd_lab_creative/internal/shared/model"
 	"github.com/google/uuid"
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 var projectNotFound = errors.New("projects not found")
+var errOrderAlreadyUse = errors.New("project with this order already exist")
 
 type ProjectRepository struct {
 	db *sqlcgen.Queries
@@ -42,6 +45,14 @@ func (pr *ProjectRepository) CreateProjects(ctx context.Context, dto createProje
 	})
 
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
+			if pgErr.Code == pgerrcode.UniqueViolation {
+				if pgErr.ConstraintName == "projects_order_id_key" {
+					return model.Project{}, errOrderAlreadyUse
+				}
+			}
+		}
 		return model.Project{}, err
 	}
 

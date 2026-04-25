@@ -22,7 +22,6 @@ WHERE project_id = $1
 ORDER BY created_at DESC;
 
 -- name: CountPendingRevisions :one
--- Untuk validasi allowed_revision_count di application layer
 SELECT COUNT(*)::INT AS pending_count
 FROM revision_requests
 WHERE project_id = $1

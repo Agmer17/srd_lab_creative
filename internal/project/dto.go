@@ -31,7 +31,7 @@ type updateProjectRequest struct {
 
 type updateMemberDataRequest struct {
 	MemberId string `json:"member_id" binding:"required,uuid"`
-	NewRole  string `json:"role_id" binding:"required,uuid"`
+	NewRole  string `json:"role_id" binding:"uuid"`
 	IsOwner  *bool  `json:"is_owner,omitempty" binding:"omitempty"`
 }
 

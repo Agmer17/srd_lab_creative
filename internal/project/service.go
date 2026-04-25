@@ -60,6 +60,10 @@ func (ps *ProjectService) CreateProject(ctx context.Context, dto createProjectRe
 
 	data, err := ps.projectRepo.CreateProjects(ctx, dto)
 	if err != nil {
+		if errors.Is(err, errOrderAlreadyUse) {
+			return model.Project{}, shared.NewErrorResponse(409, "project with this order id already exist!")
+
+		}
 		return model.Project{}, shared.NewErrorResponse(500, "something wrong while trying to create project")
 	}
 
@@ -70,6 +74,7 @@ func (ps *ProjectService) CreateProject(ctx context.Context, dto createProjectRe
 		IsOwner:   true,
 	}
 	memberData, insMemErr := ps.memberService.addNewMember(ctx, creatorData)
+	ps.memberService.setOneMembersRedis(ctx, memberData[0])
 	if insMemErr != nil {
 		fmt.Println(memberData)
 		return model.Project{}, insMemErr

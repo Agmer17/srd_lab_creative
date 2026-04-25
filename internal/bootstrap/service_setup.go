@@ -1,6 +1,8 @@
 package bootstrap
 
 import (
+	"context"
+
 	"github.com/Agmer17/srd_lab_creative/internal/auth"
 	"github.com/Agmer17/srd_lab_creative/internal/category"
 	"github.com/Agmer17/srd_lab_creative/internal/order"
@@ -11,6 +13,7 @@ import (
 	"github.com/Agmer17/srd_lab_creative/internal/user"
 	"github.com/Agmer17/srd_lab_creative/internal/ws"
 	"github.com/olahol/melody"
+	"github.com/redis/go-redis/v9"
 )
 
 type ServiceConfigs struct {
@@ -27,7 +30,7 @@ type ServiceConfigs struct {
 	ProgressService      *project.ProgressService
 }
 
-func NewServiceConfigs(googleClientId string, googleSecret string, rpf *RepositoryConfigs, mel *melody.Melody) *ServiceConfigs {
+func NewServiceConfigs(ctx context.Context, googleClientId string, googleSecret string, rpf *RepositoryConfigs, mel *melody.Melody, rdb *redis.Client) *ServiceConfigs {
 
 	authService := auth.NewAuthService(googleClientId, googleSecret, rpf.AuthRepository)
 	userService := user.NewUserService(rpf.UserRepository)
@@ -38,7 +41,7 @@ func NewServiceConfigs(googleClientId string, googleSecret string, rpf *Reposito
 
 	orderService := order.NewOrderService(rpf.OrderRepository, productService)
 
-	memberService := project.NewProjectMemberService(rpf.ProjectMemberRepository)
+	memberService := project.NewProjectMemberService(ctx, rpf.ProjectMemberRepository, rdb)
 	progressService := project.NewProgressService(rpf.ProgressRepository)
 
 	projectService := project.NewProjectService(
