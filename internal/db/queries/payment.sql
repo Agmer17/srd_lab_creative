@@ -54,3 +54,10 @@ SET
     paid_at = $3
 WHERE id = $1
 RETURNING *;
+
+-- name: SetPaymentCancelled :one
+UPDATE payments
+SET
+    status = 'cancelled'
+WHERE id = $1
+RETURNING *;

@@ -89,7 +89,30 @@ func (ph *PaymentHandler) GetPaymentDetail(c *gin.Context) {
 }
 
 func (ph *PaymentHandler) PostCancelPayment(c *gin.Context) {
-	// Membatalkan transaksi di Payment Gateway dan melakukan soft-delete (deleted_at + status canceled) di DB lokal.
+	// Membatalkan transaksi di Payment Gateway
+	
+	// get user id
+	userID, ok := middleware.GetUserID(c);
+	if !ok {
+		c.JSON(401,shared.NewErrorResponse(401,"Invalid session"));
+		return;
+	}
+	// get payment id
+	path := c.Param("payment_id");
+	paymentID, err := uuid.Parse(path);
+	if err != nil {
+		c.JSON(400, shared.NewErrorResponse(400, "invalid id params"));
+		return;
+	}
+
+	newData,errCancel := ph.svc.CancelPayment(c,userID,paymentID)
+	if errCancel != nil{
+		c.JSON(errCancel.Code,errCancel);
+		return;
+	}
+
+	c.JSON(200,shared.NewSuccessResponse(200,"Payment Canceled",newData));
+
 }
 
 func (ph *PaymentHandler) HandleGetPaymentHistory(c *gin.Context) {

@@ -158,6 +158,34 @@ func (q *Queries) GetPaymentById(ctx context.Context, arg GetPaymentByIdParams) 
 	return i, err
 }
 
+const setPaymentCancelled = `-- name: SetPaymentCancelled :one
+UPDATE payments
+SET
+    status = 'cancelled'
+WHERE id = $1
+RETURNING id, order_id, method, status, amount, fee, total_payment, payment_number, expired_at, paid_at, created_at, deleted_at
+`
+
+func (q *Queries) SetPaymentCancelled(ctx context.Context, id uuid.UUID) (Payment, error) {
+	row := q.db.QueryRow(ctx, setPaymentCancelled, id)
+	var i Payment
+	err := row.Scan(
+		&i.ID,
+		&i.OrderID,
+		&i.Method,
+		&i.Status,
+		&i.Amount,
+		&i.Fee,
+		&i.TotalPayment,
+		&i.PaymentNumber,
+		&i.ExpiredAt,
+		&i.PaidAt,
+		&i.CreatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
 const setPaymentExpired = `-- name: SetPaymentExpired :exec
 UPDATE payments 
 SET 

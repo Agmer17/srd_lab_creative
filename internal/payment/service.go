@@ -278,3 +278,107 @@ func (ps *PaymentService) SyncTransaction (ctx context.Context, userID, paymentI
 	// kalo sama aja langsung return yang dari DB aja.
 	return data,nil;
 }
+
+func (ps *PaymentService) CancelGatewayTransaction(ctx context.Context, paymentID uuid.UUID, amount float64) (PakasirStatusResponse, error) {
+	// a. Siapkan payload (Bisa pakai PakasirRequest karena JSON bodynya sama persis)
+	payload := PakasirRequest{
+		Project: os.Getenv("depo_domain"),
+		OrderID: paymentID,
+		Amount:  amount,
+		APIKey:  os.Getenv("api_key"),
+	}
+
+	jsonData, _ := json.Marshal(payload)
+	reqUrl := "https://app.pakasir.com/api/transactioncancel"
+	req, err := http.NewRequestWithContext(ctx, "POST", reqUrl, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return PakasirStatusResponse{}, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	// b. Eksekusi request Cancel
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return PakasirStatusResponse{}, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return PakasirStatusResponse{}, errors.New("Pakasir rejected cancel request with code: " + resp.Status)
+	}
+
+	// c. Baca & Unmarshal jawaban
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return PakasirStatusResponse{}, err
+	}
+
+	// Karena format balasan cancel tidak memiliki root string "transaction",
+	// kita pakai anonymous struct sementara untuk menampungnya agar tetap clean
+	var result struct {
+		Amount        float64 `json:"amount"`
+		OrderID       string  `json:"order_id"`
+		Project       string  `json:"project"`
+		Status        string  `json:"status"`
+		PaymentMethod string  `json:"payment_method"`
+		CompletedAt   string  `json:"completed_at"`
+	}
+
+	err = json.Unmarshal(body, &result)
+	if err != nil {
+		return PakasirStatusResponse{}, err
+	}
+
+	// d. Manipulasi hasil dan daur ulang struct luar kita (PakasirStatusResponse)
+	finalRes := PakasirStatusResponse{}
+	finalRes.Transaction.Amount = result.Amount
+	finalRes.Transaction.OrderID = result.OrderID
+	finalRes.Transaction.Project = result.Project
+	finalRes.Transaction.Status = result.Status
+	finalRes.Transaction.PaymentMethod = result.PaymentMethod
+	finalRes.Transaction.CompletedAt = result.CompletedAt
+
+	return finalRes, nil
+}
+
+func (ps *PaymentService) CancelPayment (ctx context.Context, userID, paymentID uuid.UUID) (model.Payment,*shared.ErrorResponse){
+	// verif user
+	_, err := ps.repo.CheckUserExist(ctx,userID);
+	if err != nil {
+		if errors.Is(err, ErrUserNotFound) { 
+			return model.Payment{}, shared.NewErrorResponse(404, "User does not exist")
+		}
+		
+		return model.Payment{}, shared.NewErrorResponse(500, "something went wrong while checking the user data try again!")
+	}
+	
+	// cek payment idnya sesuai sama user id dan ada apa engga
+	paymentData,err := ps.repo.GetPaymentByID(ctx,userID,paymentID);
+	if err != nil {
+		if errors.Is(err, ErrPaymentNotFound){
+			return model.Payment{}, shared.NewErrorResponse(404, "Payment does not exist");
+		}
+		return model.Payment{}, shared.NewErrorResponse(500, "something went wrong while getting the payment data, try again!");
+	}
+
+	if paymentData.Status == "unpaid" && (paymentData.ExpiredAt != nil && time.Now().Before(*paymentData.ExpiredAt)){
+		// call cancel
+		_,cancelErr := ps.CancelGatewayTransaction(ctx,paymentData.ID,paymentData.Amount);
+		if cancelErr != nil{
+			return model.Payment{}, shared.NewErrorResponse(500, "something went wrong while connecting to payment gateway");
+		}
+
+		// update ke DB
+		updateData,updErr := ps.repo.UpdateCanceled(ctx,paymentData.ID);
+		if updErr != nil{
+			return model.Payment{}, shared.NewErrorResponse(500, "something went wrong while updating the payment status");
+		}
+
+		// return hasil update-an DB.
+		return updateData,nil;
+	}
+	// flow kalo yang diminta itu ternyata selain unpaid (expired, or anything)
+	return model.Payment{}, shared.NewErrorResponse(400, "payments cannot be cancelled");
+	
+}

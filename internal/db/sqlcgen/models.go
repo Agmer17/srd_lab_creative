@@ -101,10 +101,11 @@ func (ns NullOrderStatusEnum) Value() (driver.Value, error) {
 type PaymentStatusEnum string
 
 const (
-	PaymentStatusEnumUnpaid  PaymentStatusEnum = "unpaid"
-	PaymentStatusEnumPaid    PaymentStatusEnum = "paid"
-	PaymentStatusEnumFailed  PaymentStatusEnum = "failed"
-	PaymentStatusEnumExpired PaymentStatusEnum = "expired"
+	PaymentStatusEnumUnpaid    PaymentStatusEnum = "unpaid"
+	PaymentStatusEnumPaid      PaymentStatusEnum = "paid"
+	PaymentStatusEnumFailed    PaymentStatusEnum = "failed"
+	PaymentStatusEnumExpired   PaymentStatusEnum = "expired"
+	PaymentStatusEnumCancelled PaymentStatusEnum = "cancelled"
 )
 
 func (e *PaymentStatusEnum) Scan(src interface{}) error {
