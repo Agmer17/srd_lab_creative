@@ -143,3 +143,38 @@ func (Pr *PaymentRepository) UpdateWithResyncData (ctx context.Context, paymentI
 	}
 	return model.MapToPaymentModel(data),nil;
 }
+
+func (Pr *PaymentRepository) GetPaymentByIDWithoutUserID(ctx context.Context,paymentID uuid.UUID) (model.Payment,error){
+	data, err := Pr.db.GetPaymentByIdOnly(ctx,paymentID);
+	if err != nil{
+		if errors.Is(err,pgx.ErrNoRows){
+			return model.Payment{},ErrPaymentNotFound;	
+		}
+			return model.Payment{},err;
+	}
+	return model.MapToPaymentModel(data),nil;
+}
+
+func (Pr *PaymentRepository) UpdateStatusFromWebhook(ctx context.Context, paymentID uuid.UUID, webhookStatus string, completedAt string) (model.Payment, error) {
+	dbStatus := webhookStatus
+	if webhookStatus == "completed" {
+		dbStatus = "paid"
+	}
+	var paidAt *time.Time
+	if completedAt != "" {
+		t, err := time.Parse(time.RFC3339, completedAt)
+		if err == nil {
+			paidAt = &t
+		}
+	}
+	data, err := Pr.db.UpdatePaymentStatus(ctx, sqlcgen.UpdatePaymentStatusParams{
+		ID:     paymentID,
+		Status: dbStatus,
+		PaidAt: paidAt,
+	})
+	
+	if err != nil {
+		return model.Payment{}, err
+	}
+	return model.MapToPaymentModel(data), nil
+}

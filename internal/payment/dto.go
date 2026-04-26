@@ -51,10 +51,10 @@ type PakasirResponse struct {
 
 type PakasirStatusResponse struct {
 	Transaction struct {
-		Amount        float64 `json:"amount"`
-		OrderID       string  `json:"order_id"`
+		Amount        float64 `json:"amount" binding:"required"`
+		OrderID       string  `json:"order_id" binding:"required"`
 		Project       string  `json:"project"`
-		Status        string  `json:"status"`
+		Status        string  `json:"status" binding:"required"`
 		PaymentMethod string  `json:"payment_method"`
 		CompletedAt   string  `json:"completed_at"`
 	} `json:"transaction"`

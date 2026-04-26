@@ -382,3 +382,35 @@ func (ps *PaymentService) CancelPayment (ctx context.Context, userID, paymentID 
 	return model.Payment{}, shared.NewErrorResponse(400, "payments cannot be cancelled");
 	
 }
+
+func (ps *PaymentService) WebHookVerification(ctx context.Context, req PakasirStatusResponse, paymentID uuid.UUID) (model.Payment, *shared.ErrorResponse){
+	// verif paymentnya ada apa engga sekalian get data payment yang ada di DB.
+	// cek payment idnya sesuai sama user id dan ada apa engga
+	oldData,err := ps.repo.GetPaymentByIDWithoutUserID(ctx,paymentID);
+	if err != nil {
+		if errors.Is(err, ErrPaymentNotFound){
+			return model.Payment{}, shared.NewErrorResponse(404, "Payment does not exist");
+		}
+		return model.Payment{}, shared.NewErrorResponse(500, "something went wrong while getting the payment data, try again!");
+	}
+
+	// call ke API pakasir
+	responseData,err := ps.GetGatewayPaymentStatus(ctx,paymentID,oldData.Amount);
+	if err != nil{
+		return model.Payment{}, shared.NewErrorResponse(500, "Something went wrong while connecting to the payment gateway");
+	}
+
+
+	// bandingin
+	// kalo beda
+	if responseData.Transaction != req.Transaction {
+		return model.Payment{}, shared.NewErrorResponse(403, "Invalid data, payment data is not authenticated");
+	}
+
+	// kalo sama update
+	updData, errUpd := ps.repo.UpdateStatusFromWebhook(ctx, paymentID, req.Transaction.Status, req.Transaction.CompletedAt)
+	if errUpd != nil {
+		return model.Payment{}, shared.NewErrorResponse(500, "something went wrong while updating verified webhook data")
+	}
+	return updData, nil
+}

@@ -3,6 +3,7 @@ package payment
 import (
 	"github.com/Agmer17/srd_lab_creative/internal/shared"
 	"github.com/Agmer17/srd_lab_creative/internal/shared/middleware"
+	"github.com/Agmer17/srd_lab_creative/pkg"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -57,6 +58,35 @@ func (ph *PaymentHandler) PostCreatePayment(c *gin.Context) {
 
 func (ph *PaymentHandler) PostWebhookListener(c *gin.Context) {
 	// Endpoint yang dipanggil oleh Payment Gateway ketika ada konfirmasi mutasi bayar (sukses/gagal/kadaluarsa).
+	var req PakasirStatusResponse;
+	
+	// validasi
+	if err := c.ShouldBindJSON(&req.Transaction); err != nil {
+		vldMsg, ok := pkg.ParseValidationErrors(err)
+		if !ok {
+			c.JSON(400, shared.NewErrorResponse(400, "invalid request body! please provide valid body for webhook"));
+			return
+		}
+		c.JSON(400, shared.NewErrorResponse(400, vldMsg))
+		return
+	}
+
+	// parsigng paymentID
+	paymentID, err := uuid.Parse(req.Transaction.OrderID)
+	if err != nil {
+		c.JSON(400, shared.NewErrorResponse(400, "invalid UUID"));
+		return;
+	}
+
+	// Update Data
+	_,updErr := ph.svc.WebHookVerification(c,req,paymentID);
+	if updErr != nil{
+		c.JSON(updErr.Code,updErr);
+		return;
+	}
+
+	c.JSON(200,"OK");
+
 }
 
 func (ph *PaymentHandler) GetPaymentDetail(c *gin.Context) {
