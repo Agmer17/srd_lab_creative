@@ -66,3 +66,6 @@ sql:
           - db_type: "revision_status_enum"
             go_type : "string"
           
+          - db_type: "chat_media_type"
+            go_type : "string"
+          
