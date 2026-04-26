@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -63,6 +64,40 @@ func (ps *PaymentService)RequestTransaction(ctx context.Context, paymentMethod s
 		return PakasirResponse{}, err
 	}
 	return result, nil	
+}
+
+func (ps *PaymentService) GetGatewayPaymentStatus(ctx context.Context, paymentID uuid.UUID, amount float64) (PakasirStatusResponse, error) {
+	reqUrl := fmt.Sprintf("https://app.pakasir.com/api/transactiondetail?project=%s&amount=%.0f&order_id=%s&api_key=%s",
+		os.Getenv("depo_domain"), amount, paymentID.String(), os.Getenv("api_key"))
+
+	req, err := http.NewRequestWithContext(ctx, "GET", reqUrl, nil)
+	if err != nil {
+		return PakasirStatusResponse{}, err
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return PakasirStatusResponse{}, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return PakasirStatusResponse{}, errors.New("Pakasir rejected our request with code: " + resp.Status)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return PakasirStatusResponse{}, err
+	}
+
+	var result PakasirStatusResponse
+	err = json.Unmarshal(body, &result)
+	if err != nil {
+		return PakasirStatusResponse{}, err
+	}
+
+	return result, nil
 }
 
 func (ps *PaymentService) processNewPayment(ctx context.Context, orderData model.Order, paymentMethod string) (model.Payment, *shared.ErrorResponse) {
@@ -198,4 +233,48 @@ func (ps *PaymentService) GetTransactionHistory (ctx context.Context, userID uui
 	}
 	// return
 	return rawData,nil;
+}
+
+func (ps *PaymentService) SyncTransaction (ctx context.Context, userID, paymentID uuid.UUID) (model.Payment, *shared.ErrorResponse){
+	// verif user
+	_, err := ps.repo.CheckUserExist(ctx,userID);
+	if err != nil {
+		if errors.Is(err, ErrUserNotFound) { 
+			return model.Payment{}, shared.NewErrorResponse(404, "User does not exist")
+		}
+		
+		return model.Payment{}, shared.NewErrorResponse(500, "something went wrong while checking the user data try again!")
+	}
+	
+	// cek payment idnya sesuai sama user id dan ada apa engga
+	data,err := ps.repo.GetPaymentByID(ctx,userID,paymentID);
+	if err != nil {
+		if errors.Is(err, ErrPaymentNotFound){
+			return model.Payment{}, shared.NewErrorResponse(404, "Payment does not exist");
+		}
+		return model.Payment{}, shared.NewErrorResponse(500, "something went wrong while getting the payment data, try again!");
+	}
+	
+	// verif kalo payment yang diminta itu udah paid, expired, atau failed
+	if data.Status == "paid" || data.Status == "expired" || data.Status == "failed" || (data.ExpiredAt != nil && time.Now().After(*data.ExpiredAt)){
+		return model.Payment{}, shared.NewErrorResponse(400, "this payment cannot be synced again");
+	}
+
+	// call ke API
+	responseData,err := ps.GetGatewayPaymentStatus(ctx,paymentID,data.Amount);
+	if err != nil{
+		return model.Payment{}, shared.NewErrorResponse(500, "Something went wrong while connecting to the payment gateway");
+	}
+	// liat resultnya terus compare masih sama apa berubah
+	if responseData.Transaction.Status == "completed" && responseData.Transaction.CompletedAt != ""{
+		// kalo berubah simpen ke DB terus return ke user
+		responseData.Transaction.Status = "paid";
+		updateData,err := ps.repo.UpdateWithResyncData(ctx,paymentID,responseData);
+		if err != nil{
+			return model.Payment{}, shared.NewErrorResponse(500, "Something went wrong while updating the payment data, try again");
+		}
+		return updateData,nil;
+	}
+	// kalo sama aja langsung return yang dari DB aja.
+	return data,nil;
 }

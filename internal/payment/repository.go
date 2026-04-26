@@ -118,3 +118,19 @@ func (Pr *PaymentRepository) GetAllPaymentsByUserID(ctx context.Context, userID 
 	}
 	return model.MapListToPaymentModel(data),nil;
 }
+
+func (Pr *PaymentRepository) UpdateWithResyncData (ctx context.Context, paymentID uuid.UUID, newData PakasirStatusResponse) (model.Payment,error){
+	convertedTime, errParse := time.Parse(time.RFC3339,newData.Transaction.CompletedAt);
+	if errParse != nil{
+		return model.Payment{},errParse;
+	}
+	data, err := Pr.db.UpdatePaymentStatus(ctx,sqlcgen.UpdatePaymentStatusParams{
+		ID: paymentID,
+		Status: newData.Transaction.Status,
+		PaidAt: &convertedTime,
+	});
+	if err != nil{
+		return model.Payment{},err;
+	}
+	return model.MapToPaymentModel(data),nil;
+}

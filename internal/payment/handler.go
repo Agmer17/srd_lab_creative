@@ -114,7 +114,30 @@ func (ph *PaymentHandler) HandleGetPaymentHistory(c *gin.Context) {
 
 func (ph *PaymentHandler) PostManualSync(c *gin.Context) {
 	// Mengambil status real-time dari API Payment Gateway lalu melakukan pembaruan di DB lokal apabila webhook meleset.
+	
+	// get user id
+	userID, ok := middleware.GetUserID(c);
+	if !ok {
+		c.JSON(401,shared.NewErrorResponse(401,"Invalid session"));
+		return;
+	}
+	
+	// get payment id
+	path := c.Param("payment_id");
+	paymentID, err := uuid.Parse(path);
+	if err != nil {
+		c.JSON(400, shared.NewErrorResponse(400, "invalid id params"));
+		return;
+	}
 
+	// manual sync
+	data,syncErr := ph.svc.SyncTransaction(c,userID,paymentID);
+	if syncErr != nil{
+		c.JSON(syncErr.Code,syncErr);
+		return;
+	}
+
+	c.JSON(200, shared.NewSuccessResponse(200,"Payments data retrieved",data));
 }
 
 func (ph *PaymentHandler) RegisterRoutes(r gin.IRouter) {

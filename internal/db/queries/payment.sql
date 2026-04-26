@@ -46,3 +46,11 @@ UPDATE payments
 SET 
     status = 'expired'
 WHERE id = $1;
+
+-- name: UpdatePaymentStatus :one
+UPDATE payments
+SET
+    status = $2,
+    paid_at = $3
+WHERE id = $1
+RETURNING *;
