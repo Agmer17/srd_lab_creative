@@ -37,6 +37,13 @@ var allowedMimes = map[string]bool{
 	"application/pdf":    true,
 	"application/msword": true,
 	"application/vnd.openxmlformats-officedocument.wordprocessingml.document": true,
+	"application/vnd.ms-excel": true,
+	"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": true, // .xlsx
+
+	"application/vnd.ms-powerpoint":                                             true,
+	"application/vnd.openxmlformats-officedocument.presentationml.presentation": true, // .pptx
+
+	"text/plain": true, // .txt
 }
 
 const (
@@ -154,33 +161,33 @@ func (storage *FileStorage) compressImage(src multipart.File, dst io.Writer) err
 	return nil
 }
 
-func (storage *FileStorage) SavePublicFile(fileHeader *multipart.FileHeader, place ...string) (string, error) {
+func (storage *FileStorage) SavePublicFile(fileHeader *multipart.FileHeader, place ...string) (string, string, error) {
 	return storage.saveFile(storage.PublicPath, fileHeader, place...)
 }
 
-func (storage *FileStorage) SavePrivateFile(fileHeader *multipart.FileHeader, place ...string) (string, error) {
+func (storage *FileStorage) SavePrivateFile(fileHeader *multipart.FileHeader, place ...string) (string, string, error) {
 	return storage.saveFile(storage.PrivatePath, fileHeader, place...)
 }
 
-func (storage *FileStorage) saveFile(basePath string, fileHeader *multipart.FileHeader, place ...string) (string, error) {
+func (storage *FileStorage) saveFile(basePath string, fileHeader *multipart.FileHeader, place ...string) (string, string, error) {
 	f, err := fileHeader.Open()
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	defer f.Close()
 
 	ext, mediaType, err := storage.validateFile(f)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	if _, err := f.Seek(0, io.SeekStart); err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	filename, err := pkg.GenerateSecureString(40)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	filename += ext
 
@@ -190,44 +197,45 @@ func (storage *FileStorage) saveFile(basePath string, fileHeader *multipart.File
 	fullPath := filepath.Join(parts...)
 
 	if err := os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	dst, err := os.Create(fullPath)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	defer dst.Close()
 
 	if mediaType == TypeImage {
 		if err := storage.compressImage(f, dst); err != nil {
-			return "", err
+			return "", "", err
 		}
 	} else {
 		if _, err := io.Copy(dst, f); err != nil {
-			return "", err
+			return "", "", err
 		}
 	}
 
-	return filename, nil
+	return filename, mediaType, nil
 }
 
-func (storage *FileStorage) SaveAllPublicFile(ctx context.Context, ls []*multipart.FileHeader, place ...string) ([]string, error) {
+func (storage *FileStorage) SaveAllPublicFile(ctx context.Context, ls []*multipart.FileHeader, place ...string) ([]string, []string, error) {
 	return storage.saveAllFiles(ctx, storage.PublicPath, ls, place...)
 }
 
-func (storage *FileStorage) SaveAllPrivateFile(ctx context.Context, ls []*multipart.FileHeader, place ...string) ([]string, error) {
+func (storage *FileStorage) SaveAllPrivateFile(ctx context.Context, ls []*multipart.FileHeader, place ...string) ([]string, []string, error) {
 	return storage.saveAllFiles(ctx, storage.PrivatePath, ls, place...)
 }
 
-func (storage *FileStorage) saveAllFiles(ctx context.Context, basePath string, ls []*multipart.FileHeader, place ...string) ([]string, error) {
+func (storage *FileStorage) saveAllFiles(ctx context.Context, basePath string, ls []*multipart.FileHeader, place ...string) ([]string, []string, error) {
 	if len(ls) == 0 {
-		return []string{}, nil
+		return []string{}, []string{}, nil
 	}
 
 	g, ctx := errgroup.WithContext(ctx)
 	semaphore := make(chan struct{}, storage.maxWorkers)
 	filenames := make([]string, len(ls))
+	mediaTypes := make([]string, len(ls))
 
 	for i, fh := range ls {
 		g.Go(func() error {
@@ -238,12 +246,13 @@ func (storage *FileStorage) saveAllFiles(ctx context.Context, basePath string, l
 				return ctx.Err()
 			}
 
-			filename, err := storage.saveFile(basePath, fh, place...)
+			filename, mt, err := storage.saveFile(basePath, fh, place...)
 			if err != nil {
 				return err
 			}
 
 			filenames[i] = filename
+			mediaTypes[i] = mt
 			return nil
 		})
 	}
@@ -262,15 +271,27 @@ func (storage *FileStorage) saveAllFiles(ctx context.Context, basePath string, l
 				fmt.Println("error while cleaning up the files : ", err.Error())
 			}
 		}
-		return nil, err
+		return nil, nil, err
 	}
 
-	return filenames, nil
+	return filenames, mediaTypes, nil
+}
+
+func (storage *FileStorage) deleteFiles(basePath string, files string, place ...string) error {
+	parts := append([]string{basePath}, place...)
+	parts = append(parts, files)
+
+	path := filepath.Join(parts...)
+
+	return os.Remove(path)
+}
+
+func (storage *FileStorage) DeleteAllPrivateFiles(files []string, place ...string) {
+	for _, v := range files {
+		storage.deleteFiles(storage.PrivatePath, v, place...)
+	}
 }
 
 func (storage *FileStorage) DeletePublicFile(filename string, place ...string) error {
-    parts := append([]string{storage.PublicPath}, place...)
-    parts = append(parts, filename)
-    return os.Remove(filepath.Join(parts...))
+	return storage.deleteFiles(storage.PublicPath, filename, place...)
 }
-

@@ -1,26 +1,13 @@
-package ws
+package chat
 
 import (
+	"mime/multipart"
 	"time"
 
 	"github.com/google/uuid"
 )
 
-const (
-	TypeNotification = "SYSTEM_NOTIFICATION"
-	TypeSystem       = "SYSTEM"
-	TypeUser         = "USER"
-	TypeChat         = "CHAT"
-)
-
-type WebsocketEventType string
-
-type WebsocketEvent struct {
-	Type WebsocketEventType
-	Data any
-}
-
-type ChatData struct {
+type ChatDataDto struct {
 	Id                   uuid.UUID       `json:"id"`
 	ChatRoomId           string          `json:"chatroom_id"`
 	SenderId             uuid.UUID       `json:"sender_id"`
@@ -34,4 +21,19 @@ type ChatData struct {
 type ChatMediaType struct {
 	Type string `json:"media_type"`
 	Url  string `json:"media_access_url"`
+}
+
+type LatestChatDto struct {
+	ChatroomID    string    `json:"chatroom_id"`
+	Type          string    `json:"type"`
+	Name          string    `json:"name"`
+	Avatar        *string   `json:"avatar"`
+	LastMessage   string    `json:"last_message"`
+	LastMessageAt time.Time `json:"last_message_at"`
+}
+
+type createChatDto struct {
+	Text       string                  `form:"text" binding:"required,min=1"`
+	RoomId     string                  `form:"room_id" binding:"required,uuid"`
+	Attachment []*multipart.FileHeader `form:"attachment"`
 }

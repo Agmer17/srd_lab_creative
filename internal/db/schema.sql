@@ -168,17 +168,15 @@ CREATE TABLE chats (
     room_id     UUID      NOT NULL REFERENCES chatrooms(id) ON DELETE CASCADE,
     sender_id   UUID      REFERENCES users(id) ON DELETE SET NULL,
     text        TEXT,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    deleted_at  TIMESTAMPTZ NULL
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE chat_medias (
-    id          UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
-    chat_id     UUID          NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
-    file_name   VARCHAR(255)  NOT NULL,
-    media_type  VARCHAR(100),
+    id          UUID             PRIMARY KEY DEFAULT gen_random_uuid(),
+    chat_id     UUID             NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    file_name   VARCHAR(255)     NOT NULL,
+    media_type  chat_media_type  NOT NULL,
     size        BIGINT,
-    is_one_time BOOLEAN       NOT NULL DEFAULT FALSE,
     created_at  TIMESTAMPTZ     NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

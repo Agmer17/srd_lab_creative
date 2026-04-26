@@ -35,6 +35,8 @@ func NewApp(ctx context.Context, router *gin.Engine, googleClient string, google
 		return true
 	}
 
+	mel.Config.MaxMessageSize = 8 * 1024
+
 	// setup reposiotry
 	repoConfigs := NewRepositoryConfigs(db)
 

@@ -328,16 +328,14 @@ type Chat struct {
 	SenderID  uuid.UUID
 	Text      *string
 	CreatedAt time.Time
-	DeletedAt *time.Time
 }
 
 type ChatMedia struct {
 	ID        uuid.UUID
 	ChatID    uuid.UUID
 	FileName  string
-	MediaType *string
+	MediaType string
 	Size      *int64
-	IsOneTime bool
 	CreatedAt time.Time
 }
 
