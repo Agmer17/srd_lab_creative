@@ -47,10 +47,10 @@ var allowedMimes = map[string]bool{
 }
 
 const (
-	TypeAudio    = "AUDIO"
-	TypeImage    = "IMAGE"
-	TypeVideo    = "VIDEO"
-	TypeDocument = "DOCUMENT"
+	TypeAudio    = "audio"
+	TypeImage    = "image"
+	TypeVideo    = "video"
+	TypeDocument = "document"
 )
 
 type FileStorage struct {

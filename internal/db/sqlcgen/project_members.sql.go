@@ -408,19 +408,24 @@ func (q *Queries) ListProjectMembersWithUser(ctx context.Context, projectID uuid
 	return items, nil
 }
 
-const removeProjectMember = `-- name: RemoveProjectMember :execrows
+const removeProjectMember = `-- name: RemoveProjectMember :one
 UPDATE project_members
 SET left_at = CURRENT_TIMESTAMP
 WHERE id = $1
   AND left_at IS NULL
+RETURNING user_id, project_id
 `
 
-func (q *Queries) RemoveProjectMember(ctx context.Context, id uuid.UUID) (int64, error) {
-	result, err := q.db.Exec(ctx, removeProjectMember, id)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
+type RemoveProjectMemberRow struct {
+	UserID    uuid.UUID
+	ProjectID uuid.UUID
+}
+
+func (q *Queries) RemoveProjectMember(ctx context.Context, id uuid.UUID) (RemoveProjectMemberRow, error) {
+	row := q.db.QueryRow(ctx, removeProjectMember, id)
+	var i RemoveProjectMemberRow
+	err := row.Scan(&i.UserID, &i.ProjectID)
+	return i, err
 }
 
 const updateProjectMemberRole = `-- name: UpdateProjectMemberRole :one

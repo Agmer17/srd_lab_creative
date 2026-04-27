@@ -14,7 +14,7 @@ type createProjectRequest struct {
 	CreatorRoleId   string     `json:"creator_role_id" binding:"required,uuid"`
 }
 
-type addNewMemberDto struct {
+type AddNewMemberDto struct {
 	ProjectId string `json:"project_id" binding:"required,uuid"`
 	UserId    string `json:"user_id" binding:"required,uuid"`
 	RoleId    string `json:"role_id" binding:"required,uuid"`
@@ -29,7 +29,7 @@ type updateProjectRequest struct {
 	EndDate         *time.Time `json:"end_date" binding:"omitempty"`
 }
 
-type updateMemberDataRequest struct {
+type UpdateMemberDataRequest struct {
 	MemberId string `json:"member_id" binding:"required,uuid"`
 	NewRole  string `json:"role_id" binding:"uuid"`
 	IsOwner  *bool  `json:"is_owner,omitempty" binding:"omitempty"`

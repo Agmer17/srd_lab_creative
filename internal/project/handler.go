@@ -158,7 +158,7 @@ func (ph *ProjectHandler) PostNewMember(c *gin.Context) {
 		return
 	}
 
-	var req addNewMemberDto
+	var req AddNewMemberDto
 	if err := c.ShouldBindJSON(&req); err != nil {
 		errMap, isValid := pkg.ParseValidationErrors(err)
 
@@ -191,7 +191,7 @@ func (ph *ProjectHandler) PatchMemberData(c *gin.Context) {
 		return
 	}
 
-	var req updateMemberDataRequest
+	var req UpdateMemberDataRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		errMap, isValid := pkg.ParseValidationErrors(err)
 

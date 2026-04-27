@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"encoding/json"
 	"fmt"
 	"sync"
 
@@ -31,6 +32,7 @@ func NewWebsocketHub(m *melody.Melody) *WebsocketHub {
 func (hub *WebsocketHub) hubInit() {
 	hub.mel.HandleConnect(hub.HandleConnectionRequest)
 	hub.mel.HandleDisconnect(hub.RemoveFromAllRooms)
+	hub.mel.HandleMessage(hub.handleMessageFromClient)
 }
 
 func (hub *WebsocketHub) GetOrCreateRoom(id string) *Room {
@@ -65,13 +67,27 @@ func (hub *WebsocketHub) RemoveFromAllRooms(s *melody.Session) {
 	delete(hub.SessionRooms, s)
 }
 
+func (hub *WebsocketHub) SendPayloadTo(roomId string, data []byte) {
+	hub.mu.Lock()
+	r, ok := hub.Rooms[roomId]
+	hub.mu.Unlock()
+
+	if !ok {
+		return
+	}
+
+	for cl := range r.Clients {
+		cl.Write(data)
+	}
+
+}
+
 func (hub *WebsocketHub) HandleConnectionRequest(s *melody.Session) {
 
 	idStr := s.Request.Header.Get("X-User-ID")
 
 	userId, err := uuid.Parse(idStr)
 	if err != nil {
-		fmt.Println("id str : ", idStr)
 		fmt.Println("id str : ", idStr)
 
 		s.Close()
@@ -90,4 +106,48 @@ func (hub *WebsocketHub) HandleConnectionRequest(s *melody.Session) {
 	fmt.Println("user id : ", userId)
 
 	hub.SessionRooms[s][userId.String()] = true
+}
+
+func (hub *WebsocketHub) handleMessageFromClient(s *melody.Session, b []byte) {
+	var eventPayload WebsocketEvent
+
+	if err := json.Unmarshal(b, &eventPayload); err != nil {
+
+		data, _ := json.Marshal(SystemNotificationData{
+			Message: "ERROR INVALID PAYLOAD MESSAGE",
+		})
+
+		payload := WebsocketEvent{
+			Type: TypeSystemError,
+			Data: data,
+		}
+
+		bytePayload, _ := json.Marshal(payload)
+		_ = s.Write(bytePayload)
+		return
+	}
+
+	switch eventPayload.Type {
+	case TypeRoomJoin:
+		var joinData JoinRoomData
+		if err := json.Unmarshal(eventPayload.Data, &joinData); err != nil {
+			return
+		}
+
+		currentRoom := hub.GetOrCreateRoom("room:" + joinData.RoomId)
+		currentRoom.RegisterConnection(s)
+
+	default:
+		data, _ := json.Marshal(SystemNotificationData{
+			Message: "UNKNOWN EVENT TYPE",
+		})
+
+		payload := WebsocketEvent{
+			Type: TypeSystemError,
+			Data: data,
+		}
+
+		bytePayload, _ := json.Marshal(payload)
+		_ = s.Write(bytePayload)
+	}
 }

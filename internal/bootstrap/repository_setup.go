@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"github.com/Agmer17/srd_lab_creative/internal/auth"
 	"github.com/Agmer17/srd_lab_creative/internal/category"
+	"github.com/Agmer17/srd_lab_creative/internal/chat"
 	"github.com/Agmer17/srd_lab_creative/internal/db/sqlcgen"
 	"github.com/Agmer17/srd_lab_creative/internal/order"
 	"github.com/Agmer17/srd_lab_creative/internal/product"
@@ -22,6 +23,10 @@ type RepositoryConfigs struct {
 	ProjectMemberRepository *project.ProjectMemberRepository
 	ProgressRepository      *project.ProgresRepository
 	RevisionRepository      *project.RevisionRepository
+
+	ChatroomRepository  *chat.ChatroomRepository
+	ChatRepository      *chat.ChatRepository
+	ChatMediaRepository *chat.ChatMediaRepository
 }
 
 func NewRepositoryConfigs(q *sqlcgen.Queries) *RepositoryConfigs {
@@ -38,6 +43,10 @@ func NewRepositoryConfigs(q *sqlcgen.Queries) *RepositoryConfigs {
 
 	revisionRepo := project.NewRevisionRepository(q)
 
+	chatroomRepo := chat.NewChatroomRepository(q)
+	chatRepo := chat.NewChatRepository(q)
+	chatMediaRepo := chat.NewChatMediaRepository(q)
+
 	return &RepositoryConfigs{
 		AuthRepository:          authRepo,
 		UserRepository:          userRepo,
@@ -49,6 +58,9 @@ func NewRepositoryConfigs(q *sqlcgen.Queries) *RepositoryConfigs {
 		ProjectMemberRepository: projectMemberRepo,
 		ProgressRepository:      progressRepo,
 		RevisionRepository:      revisionRepo,
+		ChatroomRepository:      chatroomRepo,
+		ChatRepository:          chatRepo,
+		ChatMediaRepository:     chatMediaRepo,
 	}
 
 }

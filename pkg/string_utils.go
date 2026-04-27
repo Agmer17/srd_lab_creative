@@ -12,5 +12,5 @@ func GenerateSecureString(n int) (string, error) {
 		return "", err
 	}
 
-	return base64.URLEncoding.EncodeToString(b), nil
+	return base64.RawURLEncoding.EncodeToString(b), nil
 }
