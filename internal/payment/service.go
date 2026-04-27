@@ -155,7 +155,8 @@ func (ps *PaymentService) AddTransaction (ctx context.Context, userID, orderID u
 	}
 
 	// ini kalo data payment ga ada (call ke pg kemudian simpen ke DB)
-	if errors.Is(err, ErrPaymentNotFound){
+	if errors.Is(err, ErrPaymentNotFound) || latestPaymentData.Status == "cancelled"{
+		fmt.Println("HIT");
 		return ps.processNewPayment(ctx,orderData,paymentMethod);
 	}
 
@@ -163,7 +164,7 @@ func (ps *PaymentService) AddTransaction (ctx context.Context, userID, orderID u
 	// flow udah dibayar
 	if latestPaymentData.Status == "paid"{
 		
-		return model.Payment{}, shared.NewErrorResponse(400, "Pesanan ini sudah lunas");
+		return model.Payment{}, shared.NewErrorResponse(400, "Payment has been paid");
 
 	}else if latestPaymentData.ExpiredAt != nil && time.Now().After(*latestPaymentData.ExpiredAt) && latestPaymentData.Status == "unpaid"{
 		// flow belum dibayar dan udah expired

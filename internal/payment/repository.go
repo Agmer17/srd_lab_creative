@@ -82,6 +82,7 @@ func (Pr *PaymentRepository) UpdatePaymentWithGatewayData (ctx context.Context, 
 		Fee: &updateData.Payment.Fee,
 		TotalPayment: &updateData.Payment.TotalPayment,
 		ExpiredAt: &expiredAt,
+		PaymentNumber: &updateData.Payment.PaymentNumber,
 	})
 	if err != nil{
 		return model.Payment{},err;
