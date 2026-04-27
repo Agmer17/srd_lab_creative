@@ -144,6 +144,12 @@ func (ps *PaymentService) AddTransaction (ctx context.Context, userID, orderID u
 		return model.Payment{}, shared.NewErrorResponse(500, "something went wrong while checking the order data try again!");
 	}
 
+	// verifikasi order yang dibikin jadi payment itu yang masih pending aja, kalo udah processed,cancelled, atau completed ga bisa dijadiin payments lagi
+
+	if orderData.Status != "pending"{
+		return model.Payment{}, shared.NewErrorResponse(500, "order status has been processed, completed, or cancelled");
+	}
+
 	// cek payment data ada atau tidak
 	latestPaymentData, err := ps.repo.GetLatestPayment(ctx,userID,orderData.ID);
 
