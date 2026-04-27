@@ -9,6 +9,7 @@ import (
 	"github.com/Agmer17/srd_lab_creative/internal/chat"
 	"github.com/Agmer17/srd_lab_creative/internal/db/sqlcgen"
 	"github.com/Agmer17/srd_lab_creative/internal/order"
+	"github.com/Agmer17/srd_lab_creative/internal/payment"
 	"github.com/Agmer17/srd_lab_creative/internal/product"
 	"github.com/Agmer17/srd_lab_creative/internal/project"
 	"github.com/Agmer17/srd_lab_creative/internal/projectrole"
@@ -60,6 +61,7 @@ func NewApp(ctx context.Context, router *gin.Engine, googleClient string, google
 
 	orderHandler := order.NewOrderHandler(serviceConfigs.OrderService)
 	projectHandler := project.NewProjectHandler(serviceConfigs.ProjectService)
+	paymentHandler := payment.NewPaymentHandler(serviceConfigs.PaymentService);
 
 	chatHandler := chat.NewChatHandler(serviceConfigs.MessaginService)
 	// ws
@@ -76,6 +78,7 @@ func NewApp(ctx context.Context, router *gin.Engine, googleClient string, google
 		orderHandler,
 		projectHandler,
 		chatHandler,
+		paymentHandler,
 	)
 
 	return &App{
