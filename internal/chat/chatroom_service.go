@@ -89,3 +89,13 @@ func (css *ChatroomService) GetProjectChatroomMember(ctx context.Context, projec
 
 	return data, nil
 }
+
+func (css *ChatroomService) AddPersonalMember(ctx context.Context, chatroomId []uuid.UUID, userId []uuid.UUID) *shared.ErrorResponse {
+
+	err := css.repo.AddPersonalParticipants(ctx, chatroomId, userId)
+	if err != nil {
+		return shared.NewErrorResponse(500, "something wrong while trying to input data "+err.Error())
+	}
+
+	return nil
+}

@@ -49,7 +49,7 @@ func NewServiceConfigs(ctx context.Context, googleClientId string, googleSecret 
 	wshub := ws.NewWebsocketHub(mel)
 	chatroomSvc := chat.NewChatroomService(rpf.ChatroomRepository)
 	chatSvc := chat.NewChatService(rpf.ChatRepository, rpf.ChatMediaRepository, myStorage)
-	messagingService := chat.NewMessagingService(chatSvc, chatroomSvc, wshub, rdb)
+	messagingService := chat.NewMessagingService(chatSvc, chatroomSvc, wshub, rdb, myStorage)
 
 	memberService := project.NewProjectMemberService(ctx, rpf.ProjectMemberRepository, rdb)
 	progressService := project.NewProgressService(rpf.ProgressRepository)

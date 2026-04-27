@@ -92,6 +92,9 @@ func (cs *ChatService) GetChatsByRoomID(ctx context.Context, roomID uuid.UUID) (
 func (cs *ChatService) DeleteChat(ctx context.Context, id uuid.UUID, curr uuid.UUID) *shared.ErrorResponse {
 	oldData, err := cs.repo.GetChatById(ctx, id)
 	if err != nil {
+		if errors.Is(err, errChatNotFound) {
+			return shared.NewErrorResponse(404, "chat id not found! you can't delete this message")
+		}
 		return shared.NewErrorResponse(500, "something wrng while trying delete chat data")
 	}
 
@@ -107,13 +110,15 @@ func (cs *ChatService) DeleteChat(ctx context.Context, id uuid.UUID, curr uuid.U
 		return shared.NewErrorResponse(500, "failed to delete chat")
 	}
 
-	fileToDelete := make([]string, len(oldData.Medias))
+	if len(oldData.Medias) != 0 {
+		fileToDelete := make([]string, len(oldData.Medias))
 
-	for i, v := range oldData.Medias {
-		fileToDelete[i] = v.FileName
+		for i, v := range oldData.Medias {
+			fileToDelete[i] = v.FileName
+		}
+		fmt.Println(fileToDelete)
+		cs.serverStorage.DeleteAllPrivateFiles(fileToDelete, chatMediaAtt)
 	}
-
-	cs.serverStorage.DeleteAllPrivateFiles(fileToDelete, chatMediaAtt)
 	return nil
 }
 

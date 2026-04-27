@@ -11,26 +11,39 @@ import (
 	"github.com/google/uuid"
 )
 
-const addPersonalChatroomParticipant = `-- name: AddPersonalChatroomParticipant :one
+const addPersonalChatroomParticipant = `-- name: AddPersonalChatroomParticipant :many
 INSERT INTO chatroom_participants (chatroom_id, user_id)
-VALUES ($1, $2)
+VALUES (unnest($1::uuid[]), unnest($2::uuid[]))
 RETURNING id, chatroom_id, user_id, joined_at, left_at
 `
 
 type AddPersonalChatroomParticipantParams struct {
-	ChatroomID uuid.UUID
-	UserID     uuid.UUID
+	ChatroomID []uuid.UUID
+	UserID     []uuid.UUID
 }
 
-func (q *Queries) AddPersonalChatroomParticipant(ctx context.Context, arg AddPersonalChatroomParticipantParams) (ChatroomParticipant, error) {
-	row := q.db.QueryRow(ctx, addPersonalChatroomParticipant, arg.ChatroomID, arg.UserID)
-	var i ChatroomParticipant
-	err := row.Scan(
-		&i.ID,
-		&i.ChatroomID,
-		&i.UserID,
-		&i.JoinedAt,
-		&i.LeftAt,
-	)
-	return i, err
+func (q *Queries) AddPersonalChatroomParticipant(ctx context.Context, arg AddPersonalChatroomParticipantParams) ([]ChatroomParticipant, error) {
+	rows, err := q.db.Query(ctx, addPersonalChatroomParticipant, arg.ChatroomID, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ChatroomParticipant
+	for rows.Next() {
+		var i ChatroomParticipant
+		if err := rows.Scan(
+			&i.ID,
+			&i.ChatroomID,
+			&i.UserID,
+			&i.JoinedAt,
+			&i.LeftAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

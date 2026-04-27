@@ -44,6 +44,7 @@ func (hub *WebsocketHub) GetOrCreateRoom(id string) *Room {
 		hub.Rooms[id] = newRoom
 		return newRoom
 	}
+
 	return r
 }
 
@@ -101,9 +102,6 @@ func (hub *WebsocketHub) HandleConnectionRequest(s *melody.Session) {
 	if hub.SessionRooms[s] == nil {
 		hub.SessionRooms[s] = make(map[string]bool)
 	}
-
-	fmt.Println("room that user join : ", room.Id)
-	fmt.Println("user id : ", userId)
 
 	hub.SessionRooms[s][userId.String()] = true
 }

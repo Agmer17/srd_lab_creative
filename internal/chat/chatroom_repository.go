@@ -75,10 +75,8 @@ func (crr *ChatroomRepository) GetChatroomByProjectID(ctx context.Context, proje
 func (crr *ChatroomRepository) GetChatroomByParticipantKey(ctx context.Context, key string) (model.Chatroom, error) {
 	data, err := crr.db.GetChatroomByParticipantKey(ctx, &key)
 	if err != nil {
-		if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok {
-			if pgErr.Code == pgerrcode.NoDataFound {
-				return model.Chatroom{}, errChatroomNotFound
-			}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return model.Chatroom{}, errChatroomNotFound
 		}
 		return model.Chatroom{}, err
 	}
@@ -120,4 +118,19 @@ func (crr *ChatroomRepository) GetProjectChatroomMember(ctx context.Context, pro
 	}
 
 	return listData, nil
+}
+
+func (crr *ChatroomRepository) AddPersonalParticipants(ctx context.Context, chatroomId []uuid.UUID, userId []uuid.UUID) error {
+
+	_, err := crr.db.AddPersonalChatroomParticipant(ctx, sqlcgen.AddPersonalChatroomParticipantParams{
+		ChatroomID: chatroomId,
+		UserID:     userId,
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+
 }
