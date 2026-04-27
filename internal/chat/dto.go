@@ -37,3 +37,8 @@ type createChatDto struct {
 	RoomId     string                  `form:"room_id" binding:"required,uuid"`
 	Attachment []*multipart.FileHeader `form:"attachment"`
 }
+
+type createPersonalChatDto struct {
+	Text       string                  `form:"text" binding:"required,min=1"`
+	Attachment []*multipart.FileHeader `form:"attachment"`
+}

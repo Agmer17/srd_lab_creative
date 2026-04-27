@@ -9,6 +9,7 @@ import (
 	"github.com/Agmer17/srd_lab_creative/internal/shared/model"
 	"github.com/google/uuid"
 	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
@@ -149,6 +150,9 @@ func (cr *ChatRepository) GetChatById(ctx context.Context, id uuid.UUID) (model.
 
 	data, err := cr.db.GetChatID(ctx, id)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return model.Chat{}, errChatNotFound
+		}
 		return model.Chat{}, err
 	}
 
@@ -159,7 +163,7 @@ func (cr *ChatRepository) GetChatById(ctx context.Context, id uuid.UUID) (model.
 	}
 
 	var chatMedia []model.ChatMedia
-	err = json.Unmarshal(data.Sender, &chatMedia)
+	err = json.Unmarshal(data.Medias, &chatMedia)
 	if err != nil {
 		return model.Chat{}, err
 	}
