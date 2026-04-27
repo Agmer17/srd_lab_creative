@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -9,15 +10,16 @@ import (
 const (
 	TypeNotification = "SYSTEM_NOTIFICATION"
 	TypeSystem       = "SYSTEM"
-	TypeUser         = "USER"
+	TypeSystemError  = "SYSTEM_ERROR"
+	TypeRoomJoin     = "USER_JOIN_ROOM"
 	TypeChat         = "CHAT"
 )
 
 type WebsocketEventType string
 
 type WebsocketEvent struct {
-	Type WebsocketEventType
-	Data any
+	Type WebsocketEventType `json:"type"`
+	Data json.RawMessage    `json:"data"`
 }
 
 type ChatData struct {
@@ -34,4 +36,12 @@ type ChatData struct {
 type ChatMediaType struct {
 	Type string `json:"media_type"`
 	Url  string `json:"media_access_url"`
+}
+
+type JoinRoomData struct {
+	RoomId string `json:"room_id"`
+}
+
+type SystemNotificationData struct {
+	Message string `json:"message"`
 }

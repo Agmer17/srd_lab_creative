@@ -79,3 +79,13 @@ func (css *ChatroomService) CreatePersonalChatroom(ctx context.Context, key stri
 
 	return data, nil
 }
+
+func (css *ChatroomService) GetProjectChatroomMember(ctx context.Context, projectId uuid.UUID) ([]model.ProjectMember, *shared.ErrorResponse) {
+
+	data, err := css.repo.GetProjectChatroomMember(ctx, projectId)
+	if err != nil {
+		return []model.ProjectMember{}, shared.NewErrorResponse(500, "something wrong while trying to get member data")
+	}
+
+	return data, nil
+}

@@ -190,18 +190,18 @@ func (pmr *ProjectMemberRepository) GetMemberDataByUserId(ctx context.Context, u
 	}, nil
 }
 
-func (pmr *ProjectMemberRepository) RemoveFromProject(ctx context.Context, toRemove uuid.UUID) error {
+func (pmr *ProjectMemberRepository) RemoveFromProject(ctx context.Context, toRemove uuid.UUID) (uuid.UUID, uuid.UUID, error) {
 
-	aff, err := pmr.db.RemoveProjectMember(ctx, toRemove)
+	rem, err := pmr.db.RemoveProjectMember(ctx, toRemove)
 	if err != nil {
-		return err
+
+		if errors.Is(err, pgx.ErrNoRows) {
+			return uuid.Nil, uuid.Nil, memberNotFound
+		}
+		return uuid.Nil, uuid.Nil, err
 	}
 
-	if aff == 0 {
-		return memberNotFound
-	}
-
-	return nil
+	return rem.UserID, rem.ProjectID, nil
 }
 
 func (pmr *ProjectMemberRepository) getAllMembers(ctx context.Context) ([]model.ProjectMember, error) {

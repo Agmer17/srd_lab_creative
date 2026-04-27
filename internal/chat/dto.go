@@ -9,7 +9,7 @@ import (
 
 type ChatDataDto struct {
 	Id                   uuid.UUID       `json:"id"`
-	ChatRoomId           string          `json:"chatroom_id"`
+	ChatRoomId           uuid.UUID       `json:"chatroom_id"`
 	SenderId             uuid.UUID       `json:"sender_id"`
 	SenderFullName       string          `json:"sender_full_name"`
 	SenderProfilePiCture string          `json:"sender_profile_picture"`
@@ -24,12 +24,12 @@ type ChatMediaType struct {
 }
 
 type LatestChatDto struct {
-	ChatroomID    string    `json:"chatroom_id"`
-	Type          string    `json:"type"`
-	Name          string    `json:"name"`
-	Avatar        *string   `json:"avatar"`
-	LastMessage   string    `json:"last_message"`
-	LastMessageAt time.Time `json:"last_message_at"`
+	ChatroomID    string     `json:"chatroom_id"`
+	Type          string     `json:"type"`
+	Name          string     `json:"name"`
+	Avatar        *string    `json:"avatar"`
+	LastMessage   string     `json:"last_message"`
+	LastMessageAt *time.Time `json:"last_message_at"`
 }
 
 type createChatDto struct {

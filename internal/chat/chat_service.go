@@ -44,31 +44,33 @@ func (cs *ChatService) CreateChat(ctx context.Context, senderId uuid.UUID, dto c
 		return model.Chat{}, shared.NewErrorResponse(500, "failed to create chat")
 	}
 
-	suc, tp, err := cs.serverStorage.SaveAllPrivateFile(ctx, dto.Attachment, chatMediaAtt)
-	if err != nil {
-		cs.repo.DeleteChat(ctx, data.ID)
-		fmt.Println(err)
-		return model.Chat{}, shared.NewErrorResponse(500, "something wrong while trying to save the file. Rolling back operation")
-	}
-
-	cmm := make([]model.ChatMedia, len(suc))
-	for i, v := range suc {
-		tempMed := tp[i]
-		cmm[i] = model.ChatMedia{
-			ChatID:    data.ID,
-			FileName:  v,
-			MediaType: tempMed,
+	if len(dto.Attachment) != 0 {
+		suc, tp, err := cs.serverStorage.SaveAllPrivateFile(ctx, dto.Attachment, chatMediaAtt)
+		if err != nil {
+			cs.repo.DeleteChat(ctx, data.ID)
+			fmt.Println(err)
+			return model.Chat{}, shared.NewErrorResponse(500, "something wrong while trying to save the file. Rolling back operation")
 		}
-	}
 
-	mediaData, err := cs.mediaRepo.CreateChatMedia(ctx, cmm)
-	if err != nil {
-		cs.repo.DeleteChat(ctx, data.ID)
-		fmt.Println(err)
-		return model.Chat{}, shared.NewErrorResponse(500, "something wrong while trying to save the file. Rolling back operation")
-	}
+		cmm := make([]model.ChatMedia, len(suc))
+		for i, v := range suc {
+			tempMed := tp[i]
+			cmm[i] = model.ChatMedia{
+				ChatID:    data.ID,
+				FileName:  v,
+				MediaType: tempMed,
+			}
+		}
 
-	data.Medias = mediaData
+		mediaData, err := cs.mediaRepo.CreateChatMedia(ctx, cmm)
+		if err != nil {
+			cs.repo.DeleteChat(ctx, data.ID)
+			fmt.Println(err)
+			return model.Chat{}, shared.NewErrorResponse(500, "something wrong while trying to save the file. Rolling back operation")
+		}
+
+		data.Medias = mediaData
+	}
 	return data, nil
 }
 
@@ -121,6 +123,7 @@ func (cs *ChatService) DeleteChat(ctx context.Context, id uuid.UUID, curr uuid.U
 func (cs *ChatService) GetLatestChatPreview(ctx context.Context, userID uuid.UUID) ([]LatestChatDto, *shared.ErrorResponse) {
 	data, err := cs.repo.GetLatestChatPreview(ctx, userID)
 	if err != nil {
+		fmt.Println(err)
 		return []LatestChatDto{}, shared.NewErrorResponse(500, "failed to get latest chats")
 	}
 

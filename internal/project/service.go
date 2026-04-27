@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Agmer17/srd_lab_creative/internal/chat"
 	"github.com/Agmer17/srd_lab_creative/internal/order"
 	"github.com/Agmer17/srd_lab_creative/internal/shared"
 	"github.com/Agmer17/srd_lab_creative/internal/shared/model"
@@ -17,6 +18,7 @@ type ProjectService struct {
 	memberService   *ProjectMemberService
 	progressService *ProgressService
 	revisionService *RevisionService
+	chatRoomService *chat.ChatroomService
 }
 
 func NewProjectService(
@@ -25,6 +27,8 @@ func NewProjectService(
 	memSvc *ProjectMemberService,
 	progSvc *ProgressService,
 	revSvc *RevisionService,
+	chr *chat.ChatroomService,
+
 ) *ProjectService {
 
 	return &ProjectService{
@@ -33,6 +37,7 @@ func NewProjectService(
 		memberService:   memSvc,
 		progressService: progSvc,
 		revisionService: revSvc,
+		chatRoomService: chr,
 	}
 }
 
@@ -76,7 +81,7 @@ func (ps *ProjectService) CreateProject(ctx context.Context, dto createProjectRe
 		return model.Project{}, shared.NewErrorResponse(500, "something wrong while trying to create project")
 	}
 
-	creatorData := addNewMemberDto{
+	creatorData := AddNewMemberDto{
 		ProjectId: data.ID.String(),
 		UserId:    userId.String(),
 		RoleId:    roleId.String(),
@@ -87,6 +92,12 @@ func (ps *ProjectService) CreateProject(ctx context.Context, dto createProjectRe
 	if insMemErr != nil {
 		fmt.Println(memberData)
 		return model.Project{}, insMemErr
+	}
+
+	// creating chatroom
+	_, cErr := ps.chatRoomService.CreateProjectChatroom(ctx, data.ID)
+	if cErr != nil {
+		fmt.Println("SOMETHING WRONG WHILE TRYING TO CREATE CHATROOM PROJECT : ", cErr.Error)
 	}
 
 	data.ProjectMembers = memberData
@@ -155,7 +166,7 @@ func (ps *ProjectService) GetMemberFromProject(ctx context.Context, projectId uu
 	return mem, nil
 }
 
-func (ps *ProjectService) AddNewMember(ctx context.Context, projectId uuid.UUID, userId uuid.UUID, req addNewMemberDto) ([]model.ProjectMember, *shared.ErrorResponse) {
+func (ps *ProjectService) AddNewMember(ctx context.Context, projectId uuid.UUID, userId uuid.UUID, req AddNewMemberDto) ([]model.ProjectMember, *shared.ErrorResponse) {
 
 	own, _, err := ps.memberService.validateOwnerOrMember(ctx, userId, projectId)
 	if err != nil {

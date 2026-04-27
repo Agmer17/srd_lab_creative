@@ -6,6 +6,7 @@ import (
 
 	"github.com/Agmer17/srd_lab_creative/internal/auth"
 	"github.com/Agmer17/srd_lab_creative/internal/category"
+	"github.com/Agmer17/srd_lab_creative/internal/chat"
 	"github.com/Agmer17/srd_lab_creative/internal/db/sqlcgen"
 	"github.com/Agmer17/srd_lab_creative/internal/order"
 	"github.com/Agmer17/srd_lab_creative/internal/product"
@@ -60,6 +61,7 @@ func NewApp(ctx context.Context, router *gin.Engine, googleClient string, google
 	orderHandler := order.NewOrderHandler(serviceConfigs.OrderService)
 	projectHandler := project.NewProjectHandler(serviceConfigs.ProjectService)
 
+	chatHandler := chat.NewChatHandler(serviceConfigs.MessaginService)
 	// ws
 	wsHandler := ws.NewWebsocketHandler(mel)
 
@@ -73,6 +75,7 @@ func NewApp(ctx context.Context, router *gin.Engine, googleClient string, google
 		productHandler,
 		orderHandler,
 		projectHandler,
+		chatHandler,
 	)
 
 	return &App{

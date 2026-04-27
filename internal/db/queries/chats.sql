@@ -66,7 +66,7 @@ WHERE id = sqlc.arg('id');
 SELECT 
     cr.id   AS chatroom_id,
     cr.type AS type,
-    lc.created_at AS last_message_at,
+    COALESCE(lc.created_at, cr.created_at) AS last_message_at,
 
     -- Nama: Ambil dari nama project atau nama user lawan bicara
     (CASE 
@@ -75,16 +75,18 @@ SELECT
     END)::text AS name,
 
     -- Avatar: Ambil profile picture user lawan (untuk personal)
-    (CASE 
-        WHEN cr.type = 'personal' THEN u.profile_picture 
-        ELSE NULL 
-    END)::text AS avatar,
+   COALESCE(
+        (CASE 
+            WHEN cr.type = 'personal' THEN u.profile_picture 
+            ELSE NULL 
+        END),
+        ''
+    )::text AS avatar,
 
-    -- Preview pesan terakhir
-    COALESCE(
-        lc.text, 
+    (
+        COALESCE(lc.text, '') || 
         CASE 
-            WHEN has_media.exists THEN '[media]' 
+            WHEN has_media.exists THEN ' [media]' 
             ELSE '' 
         END
     )::text AS last_message

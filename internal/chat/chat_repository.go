@@ -125,13 +125,19 @@ func (cr *ChatRepository) GetLatestChatPreview(ctx context.Context, userID uuid.
 	result := make([]LatestChatDto, len(rows))
 
 	for i, r := range rows {
+		var avatar *string = nil
+
+		if r.Avatar != "" {
+			avatar = &r.Avatar
+		}
+
 		dto := LatestChatDto{
 			ChatroomID:    r.ChatroomID.String(),
 			Type:          string(r.Type),
 			Name:          r.Name,
-			Avatar:        &r.Avatar,
+			Avatar:        avatar,
 			LastMessage:   r.LastMessage,
-			LastMessageAt: r.LastMessageAt,
+			LastMessageAt: &r.LastMessageAt,
 		}
 		result[i] = dto
 	}

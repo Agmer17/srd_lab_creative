@@ -39,7 +39,7 @@ func NewProjectMemberService(ctx context.Context, repo *ProjectMemberRepository,
 
 }
 
-func (pms *ProjectMemberService) addNewMember(ctx context.Context, req addNewMemberDto) ([]model.ProjectMember, *shared.ErrorResponse) {
+func (pms *ProjectMemberService) addNewMember(ctx context.Context, req AddNewMemberDto) ([]model.ProjectMember, *shared.ErrorResponse) {
 	projectId, err := uuid.Parse(req.ProjectId)
 	if err != nil {
 		return []model.ProjectMember{}, shared.NewErrorResponse(400, "invalid projectId format")
@@ -105,6 +105,12 @@ func (pms *ProjectMemberService) UpdateMemberRole(ctx context.Context, memberId 
 			return model.ProjectMember{}, shared.NewErrorResponse(404, "member with this id not found")
 		}
 		return model.ProjectMember{}, shared.NewErrorResponse(500, "something wrong while trying to update role")
+	}
+	hashKey := "member:" + newData.ProjectID.String() + ":" + newData.User.ID.String()
+	if isOwner != nil {
+		if err := pms.rdb.HSet(ctx, hashKey, "is_owner", *isOwner).Err(); err != nil {
+			fmt.Println("REDIS SETTING CACHE WRONG : ", err)
+		}
 	}
 
 	return newData, nil
@@ -188,13 +194,15 @@ func (ps *ProjectMemberService) validateOwnerOrMember(
 
 func (ps *ProjectMemberService) RemoveUserFromProject(ctx context.Context, toRemove uuid.UUID) *shared.ErrorResponse {
 
-	err := ps.memberRepo.RemoveFromProject(ctx, toRemove)
+	usr, proj, err := ps.memberRepo.RemoveFromProject(ctx, toRemove)
 	if err != nil {
 		if errors.Is(err, memberNotFound) {
 			return shared.NewErrorResponse(404, "no member found with this id")
 		}
 		return shared.NewErrorResponse(500, "something wrong while trying to remove user from project")
 	}
+
+	ps.deleteOneMemberRedis(ctx, proj.String(), usr.String())
 
 	return nil
 }
@@ -214,8 +222,8 @@ func (ps *ProjectMemberService) setAllMembersRedis(ctx context.Context, m []mode
 			"is_owner":   v.IsOwner,
 		})
 
-		pipe.Expire(ctx, hashKey, time.Hour)
-		pipe.Expire(ctx, setKey, time.Hour)
+		pipe.Expire(ctx, hashKey, 3*time.Hour)
+		pipe.Expire(ctx, setKey, 3*time.Hour)
 	}
 
 	_, err := pipe.Exec(ctx)
@@ -240,5 +248,45 @@ func (ps *ProjectMemberService) setOneMembersRedis(ctx context.Context, data mod
 	pipe.Expire(ctx, setKey, time.Hour)
 
 	_, err := pipe.Exec(ctx)
+	return err
+}
+
+func (ps *ProjectMemberService) deleteOneMemberRedis(ctx context.Context, projectID string, userID string) error {
+	pipe := ps.rdb.TxPipeline()
+
+	hashKey := "member:" + projectID + ":" + userID
+	setKey := "member:" + projectID
+
+	// 1. Hapus detail member (Hash)
+	pipe.Del(ctx, hashKey)
+
+	// 2. Cabut ID user dari indeks project (Set)
+	pipe.SRem(ctx, setKey, userID)
+
+	_, err := pipe.Exec(ctx)
+	return err
+}
+
+func (ps *ProjectMemberService) deleteAllMembersRedis(ctx context.Context, projectID string) error {
+	setKey := "member:" + projectID
+
+	// 1. Ambil semua userID yang terdaftar di project ini
+	userIDs, err := ps.rdb.SMembers(ctx, setKey).Result()
+	if err != nil {
+		return err
+	}
+
+	pipe := ps.rdb.TxPipeline()
+
+	// 2. Loop untuk menghapus setiap Hash member
+	for _, userID := range userIDs {
+		hashKey := "member:" + projectID + ":" + userID
+		pipe.Del(ctx, hashKey)
+	}
+
+	// 3. Hapus index Set project-nya
+	pipe.Del(ctx, setKey)
+
+	_, err = pipe.Exec(ctx)
 	return err
 }
