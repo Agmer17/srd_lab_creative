@@ -1,7 +1,7 @@
 CREATE TYPE global_role_enum      AS ENUM ('ADMIN', 'USER');
 CREATE TYPE product_status_enum   AS ENUM ('active', 'draft', 'archived', 'not_available');
 CREATE TYPE order_status_enum     AS ENUM ('pending', 'processing', 'completed', 'cancelled');
-CREATE TYPE payment_status_enum   AS ENUM ('unpaid', 'paid', 'failed', 'expired');
+CREATE TYPE payment_status_enum   AS ENUM ('unpaid', 'paid', 'failed', 'expired', 'cancelled');
 CREATE TYPE project_status_enum   AS ENUM ('in_progress', 'in_review', 'completed', 'archive');
 CREATE TYPE revision_status_enum  AS ENUM ('pending', 'accepted', 'rejected');
 CREATE TYPE user_gender as enum ('male', 'female');

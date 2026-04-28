@@ -158,6 +158,59 @@ func (q *Queries) GetPaymentById(ctx context.Context, arg GetPaymentByIdParams) 
 	return i, err
 }
 
+const getPaymentByIdOnly = `-- name: GetPaymentByIdOnly :one
+SELECT id, order_id, method, status, amount, fee, total_payment, payment_number, expired_at, paid_at, created_at, deleted_at FROM payments
+WHERE id = $1 and deleted_at IS NULL LIMIT 1
+`
+
+func (q *Queries) GetPaymentByIdOnly(ctx context.Context, id uuid.UUID) (Payment, error) {
+	row := q.db.QueryRow(ctx, getPaymentByIdOnly, id)
+	var i Payment
+	err := row.Scan(
+		&i.ID,
+		&i.OrderID,
+		&i.Method,
+		&i.Status,
+		&i.Amount,
+		&i.Fee,
+		&i.TotalPayment,
+		&i.PaymentNumber,
+		&i.ExpiredAt,
+		&i.PaidAt,
+		&i.CreatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const setPaymentCancelled = `-- name: SetPaymentCancelled :one
+UPDATE payments
+SET
+    status = 'cancelled'
+WHERE id = $1
+RETURNING id, order_id, method, status, amount, fee, total_payment, payment_number, expired_at, paid_at, created_at, deleted_at
+`
+
+func (q *Queries) SetPaymentCancelled(ctx context.Context, id uuid.UUID) (Payment, error) {
+	row := q.db.QueryRow(ctx, setPaymentCancelled, id)
+	var i Payment
+	err := row.Scan(
+		&i.ID,
+		&i.OrderID,
+		&i.Method,
+		&i.Status,
+		&i.Amount,
+		&i.Fee,
+		&i.TotalPayment,
+		&i.PaymentNumber,
+		&i.ExpiredAt,
+		&i.PaidAt,
+		&i.CreatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
 const setPaymentExpired = `-- name: SetPaymentExpired :exec
 UPDATE payments 
 SET 
@@ -168,6 +221,41 @@ WHERE id = $1
 func (q *Queries) SetPaymentExpired(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.Exec(ctx, setPaymentExpired, id)
 	return err
+}
+
+const updatePaymentStatus = `-- name: UpdatePaymentStatus :one
+UPDATE payments
+SET
+    status = $2,
+    paid_at = $3
+WHERE id = $1
+RETURNING id, order_id, method, status, amount, fee, total_payment, payment_number, expired_at, paid_at, created_at, deleted_at
+`
+
+type UpdatePaymentStatusParams struct {
+	ID     uuid.UUID
+	Status string
+	PaidAt *time.Time
+}
+
+func (q *Queries) UpdatePaymentStatus(ctx context.Context, arg UpdatePaymentStatusParams) (Payment, error) {
+	row := q.db.QueryRow(ctx, updatePaymentStatus, arg.ID, arg.Status, arg.PaidAt)
+	var i Payment
+	err := row.Scan(
+		&i.ID,
+		&i.OrderID,
+		&i.Method,
+		&i.Status,
+		&i.Amount,
+		&i.Fee,
+		&i.TotalPayment,
+		&i.PaymentNumber,
+		&i.ExpiredAt,
+		&i.PaidAt,
+		&i.CreatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
 }
 
 const updatePaymentWithGatewayData = `-- name: UpdatePaymentWithGatewayData :one

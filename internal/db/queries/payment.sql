@@ -7,6 +7,11 @@ WHERE o.user_id = $1
 ORDER BY p.created_at DESC 
 LIMIT 1;
 
+-- name: GetPaymentByIdOnly :one
+SELECT * FROM payments
+WHERE id = $1 and deleted_at IS NULL LIMIT 1;
+
+
 -- name: GetPaymentById :one
 SELECT p.* FROM payments p
 JOIN orders o ON o.id = p.order_id
@@ -46,3 +51,19 @@ UPDATE payments
 SET 
     status = 'expired'
 WHERE id = $1;
+
+-- name: UpdatePaymentStatus :one
+UPDATE payments
+SET
+    status = $2,
+    paid_at = $3
+WHERE id = $1
+RETURNING *;
+
+-- name: SetPaymentCancelled :one
+UPDATE payments
+SET
+    status = 'cancelled'
+WHERE id = $1
+RETURNING *;
+

@@ -82,6 +82,7 @@ func (Pr *PaymentRepository) UpdatePaymentWithGatewayData (ctx context.Context, 
 		Fee: &updateData.Payment.Fee,
 		TotalPayment: &updateData.Payment.TotalPayment,
 		ExpiredAt: &expiredAt,
+		PaymentNumber: &updateData.Payment.PaymentNumber,
 	})
 	if err != nil{
 		return model.Payment{},err;
@@ -96,6 +97,15 @@ func (Pr *PaymentRepository) UpdateExpired(ctx context.Context,paymentID uuid.UU
 	}
 	return nil
 }
+
+func (Pr *PaymentRepository) UpdateCanceled(ctx context.Context, paymentID uuid.UUID) (model.Payment,error){
+	data,err := Pr.db.SetPaymentCancelled(ctx,paymentID);
+	if err != nil {
+		return model.Payment{},err;
+	}
+	return model.MapToPaymentModel(data),nil;
+}
+
 
 func (Pr *PaymentRepository) GetPaymentByID(ctx context.Context, userID, paymentID uuid.UUID) (model.Payment,error){
 	data, err := Pr.db.GetPaymentById(ctx,sqlcgen.GetPaymentByIdParams{
@@ -117,4 +127,55 @@ func (Pr *PaymentRepository) GetAllPaymentsByUserID(ctx context.Context, userID 
 		return []model.Payment{},err;
 	}
 	return model.MapListToPaymentModel(data),nil;
+}
+
+func (Pr *PaymentRepository) UpdateWithResyncData (ctx context.Context, paymentID uuid.UUID, newData PakasirStatusResponse) (model.Payment,error){
+	convertedTime, errParse := time.Parse(time.RFC3339,newData.Transaction.CompletedAt);
+	if errParse != nil{
+		return model.Payment{},errParse;
+	}
+	data, err := Pr.db.UpdatePaymentStatus(ctx,sqlcgen.UpdatePaymentStatusParams{
+		ID: paymentID,
+		Status: newData.Transaction.Status,
+		PaidAt: &convertedTime,
+	});
+	if err != nil{
+		return model.Payment{},err;
+	}
+	return model.MapToPaymentModel(data),nil;
+}
+
+func (Pr *PaymentRepository) GetPaymentByIDWithoutUserID(ctx context.Context,paymentID uuid.UUID) (model.Payment,error){
+	data, err := Pr.db.GetPaymentByIdOnly(ctx,paymentID);
+	if err != nil{
+		if errors.Is(err,pgx.ErrNoRows){
+			return model.Payment{},ErrPaymentNotFound;	
+		}
+			return model.Payment{},err;
+	}
+	return model.MapToPaymentModel(data),nil;
+}
+
+func (Pr *PaymentRepository) UpdateStatusFromWebhook(ctx context.Context, paymentID uuid.UUID, webhookStatus string, completedAt string) (model.Payment, error) {
+	dbStatus := webhookStatus
+	if webhookStatus == "completed" {
+		dbStatus = "paid"
+	}
+	var paidAt *time.Time
+	if completedAt != "" {
+		t, err := time.Parse(time.RFC3339, completedAt)
+		if err == nil {
+			paidAt = &t
+		}
+	}
+	data, err := Pr.db.UpdatePaymentStatus(ctx, sqlcgen.UpdatePaymentStatusParams{
+		ID:     paymentID,
+		Status: dbStatus,
+		PaidAt: paidAt,
+	})
+	
+	if err != nil {
+		return model.Payment{}, err
+	}
+	return model.MapToPaymentModel(data), nil
 }

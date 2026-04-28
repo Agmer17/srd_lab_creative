@@ -3,6 +3,7 @@ package payment
 import (
 	"github.com/Agmer17/srd_lab_creative/internal/shared"
 	"github.com/Agmer17/srd_lab_creative/internal/shared/middleware"
+	"github.com/Agmer17/srd_lab_creative/pkg"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -57,6 +58,35 @@ func (ph *PaymentHandler) PostCreatePayment(c *gin.Context) {
 
 func (ph *PaymentHandler) PostWebhookListener(c *gin.Context) {
 	// Endpoint yang dipanggil oleh Payment Gateway ketika ada konfirmasi mutasi bayar (sukses/gagal/kadaluarsa).
+	var req PakasirStatusResponse;
+	
+	// validasi
+	if err := c.ShouldBindJSON(&req.Transaction); err != nil {
+		vldMsg, ok := pkg.ParseValidationErrors(err)
+		if !ok {
+			c.JSON(400, shared.NewErrorResponse(400, "invalid request body! please provide valid body for webhook"));
+			return
+		}
+		c.JSON(400, shared.NewErrorResponse(400, vldMsg))
+		return
+	}
+
+	// parsigng paymentID
+	paymentID, err := uuid.Parse(req.Transaction.OrderID)
+	if err != nil {
+		c.JSON(400, shared.NewErrorResponse(400, "invalid UUID"));
+		return;
+	}
+
+	// Update Data
+	_,updErr := ph.svc.WebHookVerification(c,req,paymentID);
+	if updErr != nil{
+		c.JSON(updErr.Code,updErr);
+		return;
+	}
+
+	c.JSON(200,"OK");
+
 }
 
 func (ph *PaymentHandler) GetPaymentDetail(c *gin.Context) {
@@ -89,7 +119,30 @@ func (ph *PaymentHandler) GetPaymentDetail(c *gin.Context) {
 }
 
 func (ph *PaymentHandler) PostCancelPayment(c *gin.Context) {
-	// Membatalkan transaksi di Payment Gateway dan melakukan soft-delete (deleted_at + status canceled) di DB lokal.
+	// Membatalkan transaksi di Payment Gateway
+	
+	// get user id
+	userID, ok := middleware.GetUserID(c);
+	if !ok {
+		c.JSON(401,shared.NewErrorResponse(401,"Invalid session"));
+		return;
+	}
+	// get payment id
+	path := c.Param("payment_id");
+	paymentID, err := uuid.Parse(path);
+	if err != nil {
+		c.JSON(400, shared.NewErrorResponse(400, "invalid id params"));
+		return;
+	}
+
+	newData,errCancel := ph.svc.CancelPayment(c,userID,paymentID)
+	if errCancel != nil{
+		c.JSON(errCancel.Code,errCancel);
+		return;
+	}
+
+	c.JSON(200,shared.NewSuccessResponse(200,"Payment Canceled",newData));
+
 }
 
 func (ph *PaymentHandler) HandleGetPaymentHistory(c *gin.Context) {
@@ -114,7 +167,30 @@ func (ph *PaymentHandler) HandleGetPaymentHistory(c *gin.Context) {
 
 func (ph *PaymentHandler) PostManualSync(c *gin.Context) {
 	// Mengambil status real-time dari API Payment Gateway lalu melakukan pembaruan di DB lokal apabila webhook meleset.
+	
+	// get user id
+	userID, ok := middleware.GetUserID(c);
+	if !ok {
+		c.JSON(401,shared.NewErrorResponse(401,"Invalid session"));
+		return;
+	}
+	
+	// get payment id
+	path := c.Param("payment_id");
+	paymentID, err := uuid.Parse(path);
+	if err != nil {
+		c.JSON(400, shared.NewErrorResponse(400, "invalid id params"));
+		return;
+	}
 
+	// manual sync
+	data,syncErr := ph.svc.SyncTransaction(c,userID,paymentID);
+	if syncErr != nil{
+		c.JSON(syncErr.Code,syncErr);
+		return;
+	}
+
+	c.JSON(200, shared.NewSuccessResponse(200,"Payments data retrieved",data));
 }
 
 func (ph *PaymentHandler) RegisterRoutes(r gin.IRouter) {

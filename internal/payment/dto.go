@@ -48,3 +48,14 @@ type PakasirResponse struct {
 		ExpiredAt     string  `json:"expired_at"` // Asumsinya pakasi me-return string RFC3339
 	} `json:"payment"`
 }
+
+type PakasirStatusResponse struct {
+	Transaction struct {
+		Amount        float64 `json:"amount" binding:"required"`
+		OrderID       string  `json:"order_id" binding:"required"`
+		Project       string  `json:"project"`
+		Status        string  `json:"status" binding:"required"`
+		PaymentMethod string  `json:"payment_method"`
+		CompletedAt   string  `json:"completed_at"`
+	} `json:"transaction"`
+}
