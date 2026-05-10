@@ -10,6 +10,7 @@ import (
 	"github.com/Agmer17/srd_lab_creative/internal/product"
 	"github.com/Agmer17/srd_lab_creative/internal/project"
 	"github.com/Agmer17/srd_lab_creative/internal/projectrole"
+	"github.com/Agmer17/srd_lab_creative/internal/review"
 	"github.com/Agmer17/srd_lab_creative/internal/user"
 )
 
@@ -30,6 +31,7 @@ type RepositoryConfigs struct {
 	ChatMediaRepository *chat.ChatMediaRepository
 
 	PaymentRepository *payment.PaymentRepository
+	ReviewRepository  *review.ReviewRepository
 }
 
 func NewRepositoryConfigs(q *sqlcgen.Queries) *RepositoryConfigs {
@@ -51,6 +53,7 @@ func NewRepositoryConfigs(q *sqlcgen.Queries) *RepositoryConfigs {
 	chatMediaRepo := chat.NewChatMediaRepository(q)
 
 	paymentRepo := payment.NewPaymentRepository(q)
+	reviewRepo := review.NewReviewRepository(q)
 
 	return &RepositoryConfigs{
 		AuthRepository:          authRepo,
@@ -67,6 +70,7 @@ func NewRepositoryConfigs(q *sqlcgen.Queries) *RepositoryConfigs {
 		ChatRepository:          chatRepo,
 		ChatMediaRepository:     chatMediaRepo,
 		PaymentRepository:		 paymentRepo,
+		ReviewRepository:        reviewRepo,
 	}
 
 }

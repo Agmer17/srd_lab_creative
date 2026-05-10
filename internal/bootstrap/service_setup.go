@@ -11,6 +11,7 @@ import (
 	"github.com/Agmer17/srd_lab_creative/internal/product"
 	"github.com/Agmer17/srd_lab_creative/internal/project"
 	"github.com/Agmer17/srd_lab_creative/internal/projectrole"
+	"github.com/Agmer17/srd_lab_creative/internal/review"
 	"github.com/Agmer17/srd_lab_creative/internal/storage"
 	"github.com/Agmer17/srd_lab_creative/internal/user"
 	"github.com/Agmer17/srd_lab_creative/internal/ws"
@@ -36,6 +37,7 @@ type ServiceConfigs struct {
 	MessaginService *chat.MessagingService
 
 	PaymentService	*payment.PaymentService
+	ReviewService   *review.ReviewService
 }
 
 func NewServiceConfigs(ctx context.Context, googleClientId string, googleSecret string, rpf *RepositoryConfigs, mel *melody.Melody, rdb *redis.Client) *ServiceConfigs {
@@ -68,6 +70,7 @@ func NewServiceConfigs(ctx context.Context, googleClientId string, googleSecret 
 	)
 
 	paymentService := payment.NewPaymentService(rpf.PaymentRepository);
+	reviewService := review.NewReviewService(rpf.ReviewRepository)
 
 	return &ServiceConfigs{
 		AuthService:          authService,
@@ -84,5 +87,6 @@ func NewServiceConfigs(ctx context.Context, googleClientId string, googleSecret 
 		ChatService:          chatSvc,
 		MessaginService:      messagingService,
 		PaymentService: 	  paymentService,
+		ReviewService:        reviewService,
 	}
 }

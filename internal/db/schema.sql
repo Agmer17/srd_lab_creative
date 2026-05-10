@@ -180,3 +180,15 @@ CREATE TABLE chat_medias (
     created_at  TIMESTAMPTZ     NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE reviews (
+    id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id     UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    product_id  UUID        NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    order_id    UUID        NOT NULL UNIQUE REFERENCES orders(id) ON DELETE CASCADE,
+    rating      INT         NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    comment     TEXT,
+    show        BOOLEAN     NOT NULL DEFAULT TRUE,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+

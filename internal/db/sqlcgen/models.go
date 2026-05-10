@@ -442,6 +442,18 @@ type ProjectMember struct {
 	LeftAt    *time.Time
 }
 
+type Review struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	ProductID uuid.UUID
+	OrderID   uuid.UUID
+	Rating    int32
+	Comment   *string
+	Show      bool
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
 type RevisionRequest struct {
 	ID        uuid.UUID
 	ProjectID uuid.UUID
