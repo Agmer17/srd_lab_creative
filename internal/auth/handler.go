@@ -10,7 +10,7 @@ import (
 
 const oneWeek = 7 * 24 * 60 * 60
 
-// const frontEndRedirect = "http://localhost:5173/account/me"
+const frontEndRedirect = "http://localhost:5173/my-profile/"
 
 type AuthHandler struct {
 	service *AuthService
@@ -55,10 +55,10 @@ func (ah *AuthHandler) HandleGoogleCallback(c *gin.Context) {
 	// buat tetsting di postman or smth, masukin ini ke cookie
 	// or smth, terus minta refresh session ke /auth/refresh-session biar dapet access tokennya
 	// access tokennya di set ke header Bearer <token deez nut>
-	c.JSON(200, refreshToken)
+	// c.JSON(200, refreshToken)
 
 	// kalo production ini uncomment duls
-	// c.Redirect(http.StatusTemporaryRedirect, frontEndRedirect)
+	c.Redirect(http.StatusTemporaryRedirect, frontEndRedirect)
 }
 
 func (ah *AuthHandler) LogoutHandler(c *gin.Context) {

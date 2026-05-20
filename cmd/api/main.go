@@ -53,11 +53,12 @@ func main() {
 
 	// redis setup
 	// setup redis client
-	rdb := redis.NewClient(&redis.Options{
-		Addr:     redisUrl,
-		Password: "",
-		DB:       0,
-	})
+	opt, err := redis.ParseURL(redisUrl)
+	if err != nil {
+		panic(err)
+	}
+
+	rdb := redis.NewClient(opt)
 	_, err = rdb.Ping(mainAppCtx).Result()
 	if err != nil {
 		panic(err)

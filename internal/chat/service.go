@@ -78,17 +78,24 @@ func (ms *MessagingService) CreateProjectMessage(ctx context.Context, curr, proj
 	return chatPayloadData, nil
 }
 
-func (ms *MessagingService) GetAllMessageFromProject(ctx context.Context, curr, projectId, roomId uuid.UUID) ([]ChatDataDto, *shared.ErrorResponse) {
+func (ms *MessagingService) GetAllMessageFromProject(ctx context.Context, curr, projectId uuid.UUID) ([]ChatDataDto, *shared.ErrorResponse) {
+	roomData, getRoomErr := ms.roomService.GetChatroomByProjectID(ctx, projectId)
+	if getRoomErr != nil {
+
+		return []ChatDataDto{}, getRoomErr
+	}
+
 	vld, err := ms.validateChatroomMember(ctx, curr, projectId)
 	if err != nil {
 		return []ChatDataDto{}, shared.NewErrorResponse(500, "something wrong while trying to get message data")
 	}
 
 	if !vld {
+		fmt.Println("kenapa gak valid ? : ", vld, " user id : ", curr)
 		return []ChatDataDto{}, shared.NewErrorResponse(403, "you are forbidden to sending message to this room")
 	}
 
-	data, getErr := ms.chatService.GetChatsByRoomID(ctx, roomId)
+	data, getErr := ms.chatService.GetChatsByRoomID(ctx, roomData.Id)
 	if getErr != nil {
 		return []ChatDataDto{}, shared.NewErrorResponse(500, "something wrong while trying to get message data")
 	}
@@ -161,7 +168,9 @@ func (ms *MessagingService) ChatmediaToModel(ctx context.Context, med []model.Ch
 func (ms *MessagingService) GetMediaAccessFromToken(ctx context.Context, token string, curr uuid.UUID) (string, *shared.ErrorResponse) {
 
 	hashkey := "media_access:private:" + token
+
 	data, err := ms.rdb.HGetAll(ctx, hashkey).Result()
+	fmt.Println("ERROR : ", err)
 	if err != nil {
 		return "", shared.NewErrorResponse(500, "something wrong while trying to get file")
 	}
@@ -172,6 +181,7 @@ func (ms *MessagingService) GetMediaAccessFromToken(ctx context.Context, token s
 	}
 
 	fileName := path.Join(ms.serverStorage.PrivatePath, chatMediaAtt, data["filename"])
+	fmt.Println("filename ", fileName)
 	return fileName, nil
 }
 
@@ -236,6 +246,7 @@ func (ms *MessagingService) CreatePersonalChat(
 	payload, _ := json.Marshal(wsPayload)
 
 	ms.hub.SendPayloadTo(target.String(), payload)
+	ms.hub.SendPayloadTo(curr.String(), payload)
 	return dtoChat, nil
 }
 

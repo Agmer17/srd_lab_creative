@@ -216,31 +216,33 @@ func (q *Queries) GetChatsByRoomID(ctx context.Context, roomID uuid.UUID) ([]Get
 }
 
 const getLatestChatPreview = `-- name: GetLatestChatPreview :many
-SELECT 
-    cr.id   AS chatroom_id,
+SELECT
+    cr.id AS chatroom_id,
     cr.type AS type,
+    cr.project_id AS project_id,
+    u.id AS other_user_id,
     COALESCE(lc.created_at, cr.created_at) AS last_message_at,
 
-    -- Nama: Ambil dari nama project atau nama user lawan bicara
-    (CASE 
-        WHEN cr.type = 'project' THEN p.name 
-        ELSE u.full_name 
+    -- Nama
+    (CASE
+        WHEN cr.type = 'project' THEN p.name
+        ELSE u.full_name
     END)::text AS name,
 
-    -- Avatar: Ambil profile picture user lawan (untuk personal)
-   COALESCE(
-        (CASE 
-            WHEN cr.type = 'personal' THEN u.profile_picture 
-            ELSE NULL 
+    -- Avatar
+    COALESCE(
+        (CASE
+            WHEN cr.type = 'personal' THEN u.profile_picture
+            ELSE NULL
         END),
         ''
     )::text AS avatar,
 
     (
-        COALESCE(lc.text, '') || 
-        CASE 
-            WHEN has_media.exists THEN ' [media]' 
-            ELSE '' 
+        COALESCE(lc.text, '') ||
+        CASE
+            WHEN has_media.exists THEN ' [media]'
+            ELSE ''
         END
     )::text AS last_message
 
@@ -251,7 +253,8 @@ LEFT JOIN projects p
     ON cr.type = 'project' AND cr.project_id = p.id
 
 LEFT JOIN LATERAL (
-    SELECT 
+    SELECT
+        u.id,
         u.full_name,
         u.profile_picture
     FROM chatroom_participants cp_other
@@ -299,6 +302,8 @@ ORDER BY lc.created_at DESC NULLS LAST
 type GetLatestChatPreviewRow struct {
 	ChatroomID    uuid.UUID
 	Type          string
+	ProjectID     uuid.UUID
+	OtherUserID   uuid.UUID
 	LastMessageAt time.Time
 	Name          string
 	Avatar        string
@@ -323,6 +328,8 @@ func (q *Queries) GetLatestChatPreview(ctx context.Context, currentUserID uuid.U
 		if err := rows.Scan(
 			&i.ChatroomID,
 			&i.Type,
+			&i.ProjectID,
+			&i.OtherUserID,
 			&i.LastMessageAt,
 			&i.Name,
 			&i.Avatar,

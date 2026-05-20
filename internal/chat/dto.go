@@ -26,14 +26,16 @@ type ChatMediaType struct {
 type LatestChatDto struct {
 	ChatroomID    string     `json:"chatroom_id"`
 	Type          string     `json:"type"`
+	ProjectId     *uuid.UUID `json:"project_id"`
 	Name          string     `json:"name"`
+	OtherUserId   *uuid.UUID `json:"other_user_id"`
 	Avatar        *string    `json:"avatar"`
 	LastMessage   string     `json:"last_message"`
 	LastMessageAt *time.Time `json:"last_message_at"`
 }
 
 type createChatDto struct {
-	Text       string                  `form:"text" binding:"required,min=1"`
+	Text       string                  `form:"text" binding:"omitempty,min=1"`
 	RoomId     string                  `form:"room_id" binding:"required,uuid"`
 	Attachment []*multipart.FileHeader `form:"attachment"`
 }

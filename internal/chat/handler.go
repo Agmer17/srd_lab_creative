@@ -1,6 +1,8 @@
 package chat
 
 import (
+	"fmt"
+
 	"github.com/Agmer17/srd_lab_creative/internal/shared"
 	"github.com/Agmer17/srd_lab_creative/internal/shared/middleware"
 	"github.com/Agmer17/srd_lab_creative/pkg"
@@ -73,14 +75,7 @@ func (chh *ChatHandler) GetChatDataFromProject(c *gin.Context) {
 		return
 	}
 
-	paramRoom := c.Param("room")
-	roomId, err := uuid.Parse(paramRoom)
-	if err != nil {
-		c.JSON(400, shared.NewErrorResponse(400, "invalid room id"))
-		return
-	}
-
-	data, getErr := chh.service.GetAllMessageFromProject(c.Request.Context(), userId, projectId, roomId)
+	data, getErr := chh.service.GetAllMessageFromProject(c.Request.Context(), userId, projectId)
 	if getErr != nil {
 		c.JSON(getErr.Code, getErr)
 		return
@@ -91,9 +86,11 @@ func (chh *ChatHandler) GetChatDataFromProject(c *gin.Context) {
 
 func (chh *ChatHandler) GetMediaAttachment(c *gin.Context) {
 	param := c.Param("token")
+
 	userId, _ := middleware.GetUserID(c)
 	filename, err := chh.service.GetMediaAccessFromToken(c.Request.Context(), param, userId)
 	if err != nil {
+		fmt.Println("ERROR : ", err)
 		c.JSON(err.Code, err)
 		return
 	}
@@ -182,7 +179,7 @@ func (chh *ChatHandler) RegisterRoutes(r gin.IRouter) {
 
 	chatApi.GET("/latest", chh.GetLatestChat)
 	chatApi.POST("/group/:projectId/send", chh.PostSendChat)
-	chatApi.GET("/group/:projectId/:room", chh.GetChatDataFromProject)
+	chatApi.GET("/group/:projectId", chh.GetChatDataFromProject)
 	chatApi.POST("/personal/:target/send", chh.PostPersonalChat)
 	chatApi.GET("/private-media/:token", chh.GetMediaAttachment)
 	chatApi.GET("/personal/:roomId", chh.GetPersonalChatData)
