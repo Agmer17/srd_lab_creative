@@ -134,3 +134,13 @@ func (crr *ChatroomRepository) AddPersonalParticipants(ctx context.Context, chat
 	return nil
 
 }
+
+func (crr *ChatroomRepository) GetCurrentUserMemberOf(ctx context.Context, id uuid.UUID) ([]uuid.UUID, error) {
+
+	data, err := crr.db.GetUserProjectChatroomIDs(ctx, id)
+	if err != nil {
+		return []uuid.UUID{}, err
+	}
+
+	return data, nil
+}

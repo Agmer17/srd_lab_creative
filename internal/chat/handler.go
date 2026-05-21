@@ -2,6 +2,7 @@ package chat
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/Agmer17/srd_lab_creative/internal/shared"
 	"github.com/Agmer17/srd_lab_creative/internal/shared/middleware"
@@ -100,6 +101,20 @@ func (chh *ChatHandler) GetMediaAttachment(c *gin.Context) {
 	c.File(filename)
 }
 
+func (chh *ChatHandler) SaveMediaAttachment(c *gin.Context) {
+	param := c.Param("token")
+
+	userId, _ := middleware.GetUserID(c)
+	filename, err := chh.service.GetMediaAccessFromToken(c.Request.Context(), param, userId)
+	if err != nil {
+		fmt.Println("ERROR : ", err)
+		c.JSON(err.Code, err)
+		return
+	}
+
+	c.FileAttachment(filename, filepath.Base(filename))
+}
+
 func (chh *ChatHandler) PostPersonalChat(c *gin.Context) {
 
 	userId, _ := middleware.GetUserID(c)
@@ -172,6 +187,18 @@ func (chh *ChatHandler) GetPersonalChatData(c *gin.Context) {
 	c.JSON(200, shared.NewSuccessResponse(200, "successfully getting chat data", data))
 }
 
+func (chh *ChatHandler) GetRoomToJoin(c *gin.Context) {
+	userId, _ := middleware.GetUserID(c)
+
+	j, err := chh.service.GetCurrentUserPartOf(c.Request.Context(), userId)
+	if err != nil {
+		c.JSON(err.Code, err)
+		return
+	}
+
+	c.JSON(200, shared.NewSuccessResponse(200, "successfully getting room to join", j))
+}
+
 func (chh *ChatHandler) RegisterRoutes(r gin.IRouter) {
 
 	chatApi := r.Group("/chat")
@@ -182,6 +209,8 @@ func (chh *ChatHandler) RegisterRoutes(r gin.IRouter) {
 	chatApi.GET("/group/:projectId", chh.GetChatDataFromProject)
 	chatApi.POST("/personal/:target/send", chh.PostPersonalChat)
 	chatApi.GET("/private-media/:token", chh.GetMediaAttachment)
+	chatApi.GET("/private-media/:token/download", chh.SaveMediaAttachment)
 	chatApi.GET("/personal/:roomId", chh.GetPersonalChatData)
 	chatApi.DELETE("/delete/:id", chh.DeleteChat)
+	chatApi.GET("/to-join", chh.GetRoomToJoin)
 }

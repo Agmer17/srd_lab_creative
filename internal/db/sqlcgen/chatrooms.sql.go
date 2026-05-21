@@ -102,3 +102,34 @@ func (q *Queries) GetChatroomByProjectID(ctx context.Context, projectID uuid.UUI
 	)
 	return i, err
 }
+
+const getUserProjectChatroomIDs = `-- name: GetUserProjectChatroomIDs :many
+SELECT 
+    c.id
+FROM chatrooms c
+INNER JOIN project_members pm ON c.project_id = pm.project_id
+WHERE pm.user_id = $1
+  AND c.type = 'project'
+  AND pm.left_at IS NULL
+ORDER BY c.created_at DESC
+`
+
+func (q *Queries) GetUserProjectChatroomIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, getUserProjectChatroomIDs, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
