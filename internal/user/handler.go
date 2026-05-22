@@ -180,12 +180,26 @@ func (uh *UserHandler) PatchUserRole(c *gin.Context) {
 
 }
 
+func (uh *UserHandler) GetAllAdmin(c *gin.Context) {
+
+	data, err := uh.service.GetAllAdmin(c.Request.Context())
+	if err != nil {
+		c.JSON(err.Code, err)
+		return
+	}
+
+	c.JSON(200, shared.NewSuccessResponse(200, "successfully getting user data", data))
+}
+
 func (uh *UserHandler) RegisterRoutes(r gin.IRouter) {
 
 	userApi := r.Group("/user")
 	userApi.Use(middleware.AuthMiddleware())
 	userApi.GET("/my-profile", uh.HandleMyProfile)
 	userApi.PATCH("/update-my-profile", uh.UpdateCurrentUser)
+
+	// dipake buat user misal mau nanya admin nih~
+	userApi.GET("/get-all/admin", uh.GetAllAdmin)
 
 	// admin only
 	userAdminOnly := userApi.Group("/")

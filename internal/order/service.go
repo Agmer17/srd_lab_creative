@@ -31,6 +31,7 @@ func (osv *OrderService) GetAllOrders(ctx context.Context, status string) ([]Ord
 
 	data, err := osv.repo.GetAllOrders(ctx, tempStatus)
 	if err != nil {
+		fmt.Println(err)
 		return []OrderListDTO{}, shared.NewErrorResponse(500, "something wrong while getting order data, try another time")
 	}
 

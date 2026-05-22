@@ -142,6 +142,47 @@ func (q *Queries) GetUserById(ctx context.Context, id uuid.UUID) (User, error) {
 	return i, err
 }
 
+const getUsersByRole = `-- name: GetUsersByRole :many
+SELECT id, global_role, full_name, email, phone_number, profile_picture, gender, provider, provider_user_id, created_at, updated_at, deleted_at
+FROM users
+WHERE deleted_at IS NULL
+	AND global_role = $1
+ORDER BY created_at DESC
+`
+
+func (q *Queries) GetUsersByRole(ctx context.Context, role string) ([]User, error) {
+	rows, err := q.db.Query(ctx, getUsersByRole, role)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []User
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.GlobalRole,
+			&i.FullName,
+			&i.Email,
+			&i.PhoneNumber,
+			&i.ProfilePicture,
+			&i.Gender,
+			&i.Provider,
+			&i.ProviderUserID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const hardDeleteUser = `-- name: HardDeleteUser :exec
 DELETE FROM users
 WHERE id = $1

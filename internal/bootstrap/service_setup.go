@@ -35,10 +35,17 @@ type ServiceConfigs struct {
 	ChatService     *chat.ChatService
 	MessaginService *chat.MessagingService
 
-	PaymentService	*payment.PaymentService
+	PaymentService *payment.PaymentService
 }
 
-func NewServiceConfigs(ctx context.Context, googleClientId string, googleSecret string, rpf *RepositoryConfigs, mel *melody.Melody, rdb *redis.Client) *ServiceConfigs {
+func NewServiceConfigs(ctx context.Context,
+	googleClientId string,
+	googleSecret string,
+	domain string,
+	apiKey string,
+	rpf *RepositoryConfigs,
+	mel *melody.Melody,
+	rdb *redis.Client) *ServiceConfigs {
 
 	authService := auth.NewAuthService(googleClientId, googleSecret, rpf.AuthRepository)
 	userService := user.NewUserService(rpf.UserRepository)
@@ -67,7 +74,7 @@ func NewServiceConfigs(ctx context.Context, googleClientId string, googleSecret 
 		chatroomSvc,
 	)
 
-	paymentService := payment.NewPaymentService(rpf.PaymentRepository);
+	paymentService := payment.NewPaymentService(rpf.PaymentRepository, domain, apiKey)
 
 	return &ServiceConfigs{
 		AuthService:          authService,
@@ -83,6 +90,6 @@ func NewServiceConfigs(ctx context.Context, googleClientId string, googleSecret 
 		ChatroomService:      chatroomSvc,
 		ChatService:          chatSvc,
 		MessaginService:      messagingService,
-		PaymentService: 	  paymentService,
+		PaymentService:       paymentService,
 	}
 }

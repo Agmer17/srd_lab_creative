@@ -24,35 +24,9 @@ type Order struct {
 	UpdatedAt    time.Time  `json:"updated_at"`
 	DeletedAt    *time.Time `json:"deleted_at,omitempty"`
 
-	User    *User    `json:"user,omitempty"`
-	Product *Product `json:"product,omitempty"`
-}
-
-func MapGenToOrder(gen sqlcgen.Order, u sqlcgen.User, p sqlcgen.Product) Order {
-	user := MapToUserModel(u)
-	product := MapToProductModel(p)
-	return Order{
-		ID:           gen.ID,
-		UserID:       gen.UserID,
-		ProductID:    gen.ProductID,
-		OrderedPrice: gen.OrderedPrice,
-		Status:       gen.Status,
-		CreatedAt:    gen.CreatedAt,
-		UpdatedAt:    gen.UpdatedAt,
-		DeletedAt:    gen.DeletedAt,
-		User:         &user,
-		Product:      &product,
-	}
-}
-
-func GenListToOrderMap(gen []sqlcgen.Order, u []sqlcgen.User, p []sqlcgen.Product) []Order {
-
-	data := make([]Order, len(gen))
-	for i := range gen {
-		data[i] = MapGenToOrder(gen[i], u[i], p[i])
-	}
-
-	return data
+	User    *User     `json:"user,omitempty"`
+	Product *Product  `json:"product,omitempty"`
+	Payment []Payment `json:"payment"` // Sekarang menampung slice payment
 }
 
 func OrderDataToModel(gen sqlcgen.Order) Order {

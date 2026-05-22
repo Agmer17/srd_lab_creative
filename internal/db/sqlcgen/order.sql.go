@@ -48,18 +48,45 @@ const getOrderByID = `-- name: GetOrderByID :one
 SELECT 
     o.id, o.user_id, o.product_id, o.ordered_price, o.status, o.created_at, o.updated_at, o.deleted_at,
     u.id, u.global_role, u.full_name, u.email, u.phone_number, u.profile_picture, u.gender, u.provider, u.provider_user_id, u.created_at, u.updated_at, u.deleted_at,
-    p.id, p.name, p.slug, p.description, p.price, p.status, p.is_featured, p.created_at, p.updated_at, p.deleted_at 
+    p.id, p.name, p.slug, p.description, p.price, p.status, p.is_featured, p.created_at, p.updated_at, p.deleted_at,
+
+    COALESCE(
+        jsonb_agg(
+            jsonb_build_object(
+                'payment_id', pay.id,
+                'order_id', pay.order_id,
+                'method', pay.method,
+                'status', pay.status,
+                'amount', pay.amount,
+                'fee', pay.fee,
+                'total_payment', pay.total_payment,
+                'payment_number', pay.payment_number,
+                'expired_at', pay.expired_at,
+                'paid_at', pay.paid_at,
+                'created_at', pay.created_at
+            )
+        ) FILTER (WHERE pay.id IS NOT NULL),
+        '[]'
+    )::jsonb AS payments
+
 FROM orders o
 JOIN users u ON u.id = o.user_id
 JOIN products p ON p.id = o.product_id
+LEFT JOIN payments pay 
+    ON pay.order_id = o.id
+   AND pay.deleted_at IS NULL
+
 WHERE o.id = $1
   AND o.deleted_at IS NULL
+
+GROUP BY o.id, u.id, p.id
 `
 
 type GetOrderByIDRow struct {
-	Order   Order
-	User    User
-	Product Product
+	Order    Order
+	User     User
+	Product  Product
+	Payments []byte
 }
 
 func (q *Queries) GetOrderByID(ctx context.Context, id uuid.UUID) (GetOrderByIDRow, error) {
@@ -96,6 +123,7 @@ func (q *Queries) GetOrderByID(ctx context.Context, id uuid.UUID) (GetOrderByIDR
 		&i.Product.CreatedAt,
 		&i.Product.UpdatedAt,
 		&i.Product.DeletedAt,
+		&i.Payments,
 	)
 	return i, err
 }
@@ -104,7 +132,24 @@ const listOrders = `-- name: ListOrders :many
 SELECT 
     o.id, o.user_id, o.product_id, o.ordered_price, o.status, o.created_at, o.updated_at, o.deleted_at,
     u.id, u.global_role, u.full_name, u.email, u.phone_number, u.profile_picture, u.gender, u.provider, u.provider_user_id, u.created_at, u.updated_at, u.deleted_at,
-    p.id, p.name, p.slug, p.description, p.price, p.status, p.is_featured, p.created_at, p.updated_at, p.deleted_at 
+    p.id, p.name, p.slug, p.description, p.price, p.status, p.is_featured, p.created_at, p.updated_at, p.deleted_at,
+    -- Subquery ringkas (hanya 4 field) buat list order
+    COALESCE(
+        (
+            SELECT jsonb_agg(
+                jsonb_build_object(
+                    'payment_id', pay.id,
+                    'method', pay.method,
+                    'status', pay.status,
+                    'amount', pay.amount
+                )
+            )
+            FROM payments pay
+            WHERE pay.order_id = o.id
+              AND pay.deleted_at IS NULL
+        ),
+        '[]'
+    )::jsonb AS payments
 FROM orders o
 JOIN users u ON u.id = o.user_id
 JOIN products p ON p.id = o.product_id
@@ -118,9 +163,10 @@ ORDER BY o.created_at DESC
 `
 
 type ListOrdersRow struct {
-	Order   Order
-	User    User
-	Product Product
+	Order    Order
+	User     User
+	Product  Product
+	Payments []byte
 }
 
 func (q *Queries) ListOrders(ctx context.Context, status *string) ([]ListOrdersRow, error) {
@@ -163,6 +209,7 @@ func (q *Queries) ListOrders(ctx context.Context, status *string) ([]ListOrdersR
 			&i.Product.CreatedAt,
 			&i.Product.UpdatedAt,
 			&i.Product.DeletedAt,
+			&i.Payments,
 		); err != nil {
 			return nil, err
 		}
@@ -178,7 +225,24 @@ const listOrdersByUser = `-- name: ListOrdersByUser :many
 SELECT 
     o.id, o.user_id, o.product_id, o.ordered_price, o.status, o.created_at, o.updated_at, o.deleted_at,
     u.id, u.global_role, u.full_name, u.email, u.phone_number, u.profile_picture, u.gender, u.provider, u.provider_user_id, u.created_at, u.updated_at, u.deleted_at,
-    p.id, p.name, p.slug, p.description, p.price, p.status, p.is_featured, p.created_at, p.updated_at, p.deleted_at 
+    p.id, p.name, p.slug, p.description, p.price, p.status, p.is_featured, p.created_at, p.updated_at, p.deleted_at,
+    -- Subquery ringkas (hanya 4 field) buat list order
+    COALESCE(
+        (
+            SELECT jsonb_agg(
+                jsonb_build_object(
+                    'payment_id', pay.id,
+                    'method', pay.method,
+                    'status', pay.status,
+                    'amount', pay.amount
+                )
+            )
+            FROM payments pay
+            WHERE pay.order_id = o.id
+              AND pay.deleted_at IS NULL
+        ),
+        '[]'
+    )::jsonb AS payments
 FROM orders o
 JOIN users u ON u.id = o.user_id
 JOIN products p ON p.id = o.product_id
@@ -198,9 +262,10 @@ type ListOrdersByUserParams struct {
 }
 
 type ListOrdersByUserRow struct {
-	Order   Order
-	User    User
-	Product Product
+	Order    Order
+	User     User
+	Product  Product
+	Payments []byte
 }
 
 func (q *Queries) ListOrdersByUser(ctx context.Context, arg ListOrdersByUserParams) ([]ListOrdersByUserRow, error) {
@@ -243,6 +308,7 @@ func (q *Queries) ListOrdersByUser(ctx context.Context, arg ListOrdersByUserPara
 			&i.Product.CreatedAt,
 			&i.Product.UpdatedAt,
 			&i.Product.DeletedAt,
+			&i.Payments,
 		); err != nil {
 			return nil, err
 		}

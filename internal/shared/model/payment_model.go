@@ -7,19 +7,18 @@ import (
 	"github.com/google/uuid"
 )
 
-
-type Payment struct{
-	ID uuid.UUID `json:"payment_id"`
-	OrderID uuid.UUID `json:"order_id"`
-	Method *string `json:"method"`
-	Status string `json:"status"`
-	Amount float64 `json:"amount"`
-	Fee float64 `json:"fee"`
-	TotalPayment *float64 `json:"total_payment"`
-	PaymentNumber *string `json:"payment_number"`
-	ExpiredAt *time.Time `json:"expired_at"`
-	PaidAt *time.Time `json:"paid_at"`
-	CreatedAt time.Time `json:"created_at"`
+type Payment struct {
+	ID            uuid.UUID  `json:"payment_id"`
+	OrderID       uuid.UUID  `json:"order_id"`
+	Method        *string    `json:"method"`
+	Status        string     `json:"status"`
+	Amount        float64    `json:"amount"`
+	Fee           float64    `json:"fee"`
+	TotalPayment  *float64   `json:"total_payment"`
+	PaymentNumber *string    `json:"payment_number"`
+	ExpiredAt     *time.Time `json:"expired_at"`
+	PaidAt        *time.Time `json:"paid_at"`
+	CreatedAt     time.Time  `json:"created_at"`
 }
 
 func MapToPaymentModel(data sqlcgen.Payment) Payment {

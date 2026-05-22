@@ -25,6 +25,8 @@ func main() {
 	databaseUrl := os.Getenv("DATABASE_URL")
 	jwtSecret := os.Getenv("JWT_SECRET")
 	redisUrl := os.Getenv("REDIS_URL")
+	paymentDomain := os.Getenv("DEPO_DOMAIN")
+	paymentApiKey := os.Getenv("API_KEY")
 
 	pkg.JwtInit(jwtSecret)
 
@@ -73,7 +75,7 @@ func main() {
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 	}))
-	app := bootstrap.NewApp(mainAppCtx, r, googleClientId, googleClientSecret, pool, rdb)
+	app := bootstrap.NewApp(mainAppCtx, r, googleClientId, googleClientSecret, paymentDomain, paymentApiKey, pool, rdb)
 	app.Run()
 
 }

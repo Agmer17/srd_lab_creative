@@ -12,18 +12,61 @@ RETURNING *;
 SELECT 
     sqlc.embed(o),
     sqlc.embed(u),
-    sqlc.embed(p) 
+    sqlc.embed(p),
+
+    COALESCE(
+        jsonb_agg(
+            jsonb_build_object(
+                'payment_id', pay.id,
+                'order_id', pay.order_id,
+                'method', pay.method,
+                'status', pay.status,
+                'amount', pay.amount,
+                'fee', pay.fee,
+                'total_payment', pay.total_payment,
+                'payment_number', pay.payment_number,
+                'expired_at', pay.expired_at,
+                'paid_at', pay.paid_at,
+                'created_at', pay.created_at
+            )
+        ) FILTER (WHERE pay.id IS NOT NULL),
+        '[]'
+    )::jsonb AS payments
+
 FROM orders o
 JOIN users u ON u.id = o.user_id
 JOIN products p ON p.id = o.product_id
+LEFT JOIN payments pay 
+    ON pay.order_id = o.id
+   AND pay.deleted_at IS NULL
+
 WHERE o.id = $1
-  AND o.deleted_at IS NULL;
+  AND o.deleted_at IS NULL
+
+GROUP BY o.id, u.id, p.id;
 
 -- name: ListOrdersByUser :many
 SELECT 
     sqlc.embed(o),
     sqlc.embed(u),
-    sqlc.embed(p) 
+    sqlc.embed(p),
+    -- Subquery ringkas (hanya 4 field) buat list order
+    COALESCE(
+        (
+            SELECT jsonb_agg(
+                jsonb_build_object(
+                    'payment_id', pay.id,
+                    'method', pay.method,
+                    'status', pay.status,
+                    'amount', pay.amount
+                )
+            )
+            FROM payments pay
+            WHERE pay.order_id = o.id
+              AND pay.deleted_at IS NULL
+        ),
+        '[]'
+    )::jsonb AS payments
 FROM orders o
 JOIN users u ON u.id = o.user_id
 JOIN products p ON p.id = o.product_id
@@ -55,7 +98,24 @@ WHERE id = $1
 SELECT 
     sqlc.embed(o),
     sqlc.embed(u),
-    sqlc.embed(p) 
+    sqlc.embed(p),
+    -- Subquery ringkas (hanya 4 field) buat list order
+    COALESCE(
+        (
+            SELECT jsonb_agg(
+                jsonb_build_object(
+                    'payment_id', pay.id,
+                    'method', pay.method,
+                    'status', pay.status,
+                    'amount', pay.amount
+                )
+            )
+            FROM payments pay
+            WHERE pay.order_id = o.id
+              AND pay.deleted_at IS NULL
+        ),
+        '[]'
+    )::jsonb AS payments
 FROM orders o
 JOIN users u ON u.id = o.user_id
 JOIN products p ON p.id = o.product_id
