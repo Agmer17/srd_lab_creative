@@ -79,14 +79,16 @@ func (oh *OrderHandler) PostCreateOrder(c *gin.Context) {
 
 func (oh *OrderHandler) HandleGetOrderByID(c *gin.Context) {
 	idParam := c.Param("id")
-
 	orderID, errParse := uuid.Parse(idParam)
 	if errParse != nil {
 		c.JSON(400, shared.NewErrorResponse(400, "invalid order id"))
 		return
 	}
 
-	data, err := oh.svc.GetOrderById(c.Request.Context(), orderID)
+	userId, _ := middleware.GetUserID(c)
+	userRole, _ := middleware.GetRole(c)
+
+	data, err := oh.svc.GetOrderById(c.Request.Context(), orderID, userId, userRole)
 	if err != nil {
 		c.JSON(err.Code, err)
 		return

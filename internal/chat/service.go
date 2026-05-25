@@ -55,6 +55,7 @@ func (ms *MessagingService) CreateProjectMessage(ctx context.Context, curr, proj
 	}
 
 	if !vld {
+
 		return ChatDataDto{}, shared.NewErrorResponse(403, "you are forbidden to sending message to this room")
 	}
 
@@ -342,4 +343,34 @@ func CompareUUID(u1, u2 string) string {
 	}
 
 	return u2 + ":" + u1
+}
+
+func (ms *MessagingService) handleCacheMissMember(ctx context.Context, userId, projectId uuid.UUID) (bool, *shared.ErrorResponse) {
+	hashKey := "member:" + projectId.String() + ":" + userId.String()
+
+	data, err := ms.rdb.HGetAll(ctx, hashKey).Result()
+	if err != nil {
+		fmt.Println(err)
+		return false, shared.NewErrorResponse(500, "something wrong while trying to get user data")
+	}
+
+	if len(data) > 0 {
+		fmt.Println("\n\n\n\nCACHE HIT CHAT MODULE")
+		return true, nil
+	}
+
+	tempData, getErr := ms.roomService.GetProjectChatroomMember(ctx, projectId)
+	if getErr != nil {
+		return false, getErr
+	}
+
+	authorize := false
+	for _, v := range tempData {
+		if userId == v.User.ID {
+			authorize = true
+			break
+		}
+	}
+
+	return authorize, nil
 }

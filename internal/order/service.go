@@ -85,7 +85,7 @@ func (osv *OrderService) UpdateOrderStatus(ctx context.Context, orderId uuid.UUI
 	return data, nil
 }
 
-func (osv *OrderService) GetOrderById(ctx context.Context, id uuid.UUID) (model.Order, *shared.ErrorResponse) {
+func (osv *OrderService) GetOrderById(ctx context.Context, id, userId uuid.UUID, role string) (model.Order, *shared.ErrorResponse) {
 	data, err := osv.repo.GetOrderByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, noOrderFound) {
@@ -93,6 +93,9 @@ func (osv *OrderService) GetOrderById(ctx context.Context, id uuid.UUID) (model.
 		}
 	}
 
+	if data.UserID != userId && role != "ADMIN" {
+		return model.Order{}, shared.NewErrorResponse(500, "you can't access this order data")
+	}
 	return data, nil
 }
 

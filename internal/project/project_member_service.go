@@ -83,6 +83,7 @@ func (pms *ProjectMemberService) addNewMember(ctx context.Context, req AddNewMem
 	}
 
 	newData, err := pms.memberRepo.GetMemberFromProject(ctx, projectId)
+	pms.setAllMembersRedis(ctx, newData)
 	if err != nil {
 		return []model.ProjectMember{}, shared.NewErrorResponse(500, "member added but failed to fetch updated list")
 	}
@@ -106,6 +107,7 @@ func (pms *ProjectMemberService) UpdateMemberRole(ctx context.Context, memberId 
 		}
 		return model.ProjectMember{}, shared.NewErrorResponse(500, "something wrong while trying to update role")
 	}
+
 	hashKey := "member:" + newData.ProjectID.String() + ":" + newData.User.ID.String()
 	if isOwner != nil {
 		if err := pms.rdb.HSet(ctx, hashKey, "is_owner", *isOwner).Err(); err != nil {
