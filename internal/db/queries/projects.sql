@@ -197,8 +197,9 @@ SELECT
     )::jsonb AS project_members,
 
     COALESCE(
-        (
-            SELECT JSON_AGG(JSONB_BUILD_OBJECT(
+    (
+        SELECT JSON_AGG(
+            JSONB_BUILD_OBJECT(
                 'id', pr.id,
                 'project_id', pr.project_id,
                 'title', pr.title,
@@ -232,15 +233,17 @@ SELECT
                         'created_at', r_task.created_at
                     )
                 )
-            ))
-            FROM progresses pr
-            JOIN project_members pm_task ON pm_task.id = pr.project_member_id
-            JOIN users u_task ON u_task.id = pm_task.user_id
-            JOIN roles r_task ON r_task.id = pm_task.role_id
-            WHERE pr.project_id = p.id
-        ),
-        '[]'
-    )::jsonb AS progress,
+            )
+            ORDER BY pr.created_at ASC
+        )
+        FROM progresses pr
+        JOIN project_members pm_task ON pm_task.id = pr.project_member_id
+        JOIN users u_task ON u_task.id = pm_task.user_id
+        JOIN roles r_task ON r_task.id = pm_task.role_id
+        WHERE pr.project_id = p.id
+    ),
+    '[]'
+)::jsonb AS progress,
 
     COALESCE(
         (

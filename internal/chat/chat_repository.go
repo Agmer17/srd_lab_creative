@@ -132,13 +132,25 @@ func (cr *ChatRepository) GetLatestChatPreview(ctx context.Context, userID uuid.
 			avatar = &r.Avatar
 		}
 
+		var projectId *uuid.UUID = nil
+
+		if r.ProjectID != uuid.Nil {
+			projectId = &r.ProjectID
+		}
+
+		var otherUserId *uuid.UUID = nil
+		if r.OtherUserID != uuid.Nil {
+			otherUserId = &r.OtherUserID
+		}
 		dto := LatestChatDto{
 			ChatroomID:    r.ChatroomID.String(),
 			Type:          string(r.Type),
+			ProjectId:     projectId,
 			Name:          r.Name,
 			Avatar:        avatar,
 			LastMessage:   r.LastMessage,
 			LastMessageAt: &r.LastMessageAt,
+			OtherUserId:   otherUserId,
 		}
 		result[i] = dto
 	}

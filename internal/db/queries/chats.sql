@@ -63,31 +63,33 @@ WHERE id = sqlc.arg('id');
 
 
 -- name: GetLatestChatPreview :many
-SELECT 
-    cr.id   AS chatroom_id,
+SELECT
+    cr.id AS chatroom_id,
     cr.type AS type,
+    cr.project_id AS project_id,
+    u.id AS other_user_id,
     COALESCE(lc.created_at, cr.created_at) AS last_message_at,
 
-    -- Nama: Ambil dari nama project atau nama user lawan bicara
-    (CASE 
-        WHEN cr.type = 'project' THEN p.name 
-        ELSE u.full_name 
+    -- Nama
+    (CASE
+        WHEN cr.type = 'project' THEN p.name
+        ELSE u.full_name
     END)::text AS name,
 
-    -- Avatar: Ambil profile picture user lawan (untuk personal)
-   COALESCE(
-        (CASE 
-            WHEN cr.type = 'personal' THEN u.profile_picture 
-            ELSE NULL 
+    -- Avatar
+    COALESCE(
+        (CASE
+            WHEN cr.type = 'personal' THEN u.profile_picture
+            ELSE NULL
         END),
         ''
     )::text AS avatar,
 
     (
-        COALESCE(lc.text, '') || 
-        CASE 
-            WHEN has_media.exists THEN ' [media]' 
-            ELSE '' 
+        COALESCE(lc.text, '') ||
+        CASE
+            WHEN has_media.exists THEN ' [media]'
+            ELSE ''
         END
     )::text AS last_message
 
@@ -101,7 +103,8 @@ LEFT JOIN projects p
 
 -- 2. Ambil detail User Lawan jika tipenya personal
 LEFT JOIN LATERAL (
-    SELECT 
+    SELECT
+        u.id,
         u.full_name,
         u.profile_picture
     FROM chatroom_participants cp_other

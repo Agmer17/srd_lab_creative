@@ -90,3 +90,12 @@ func (us *UserService) GetUserById(ctx context.Context, id uuid.UUID) (model.Use
 
 	return data, nil
 }
+
+func (us *UserService) GetAllAdmin(ctx context.Context) ([]model.User, *shared.ErrorResponse) {
+	data, err := us.repo.GetUserByRole(ctx, "ADMIN")
+	if err != nil {
+		return []model.User{}, shared.NewErrorResponse(500, "something wrong while trying to get user data")
+	}
+
+	return data, nil
+}

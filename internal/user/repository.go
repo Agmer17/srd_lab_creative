@@ -87,7 +87,7 @@ func (ur *UserRepository) UpdateUser(ctx context.Context, data UpdateUserDto, id
 			Valid:      true,
 		}
 	}
-	
+
 	updatedData, err := ur.db.UpdateUser(ctx, sqlcgen.UpdateUserParams{
 		FullName:    data.FullName,
 		Gender:      genderEnum,
@@ -111,4 +111,13 @@ func (ur *UserRepository) GetById(ctx context.Context, id uuid.UUID) (model.User
 		return model.User{}, err
 	}
 	return model.MapToUserModel(data), nil
+}
+
+func (ur *UserRepository) GetUserByRole(ctx context.Context, role string) ([]model.User, error) {
+	data, err := ur.db.GetUsersByRole(ctx, role)
+	if err != nil {
+		return []model.User{}, err
+	}
+
+	return model.GenListToUserMap(data), nil
 }

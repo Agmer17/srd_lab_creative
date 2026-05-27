@@ -2,6 +2,7 @@ package order
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 
 	"github.com/Agmer17/srd_lab_creative/internal/db/sqlcgen"
@@ -60,7 +61,7 @@ func (or *OrderRepository) GetAllOrders(ctx context.Context, status *string) ([]
 	var listModel []model.Order = make([]model.Order, len(data))
 
 	for i, v := range data {
-		listModel[i] = model.MapGenToOrder(v.Order, v.User, v.Product)
+		listModel[i] = MapListOrdersToOrder(v)
 	}
 
 	return listModel, nil
@@ -77,7 +78,7 @@ func (or *OrderRepository) GetOrderByID(ctx context.Context, id uuid.UUID) (mode
 		return model.Order{}, err
 	}
 
-	return model.MapGenToOrder(data.Order, data.User, data.Product), nil
+	return mapGetOrderByIDToOrder(data), nil
 }
 
 func (or *OrderRepository) GetOrderFromUsers(ctx context.Context, userId uuid.UUID, status *string) ([]model.Order, error) {
@@ -92,7 +93,7 @@ func (or *OrderRepository) GetOrderFromUsers(ctx context.Context, userId uuid.UU
 
 	var listModel []model.Order = make([]model.Order, len(data))
 	for i, v := range data {
-		listModel[i] = model.MapGenToOrder(v.Order, v.User, v.Product)
+		listModel[i] = MapListOrdersByUserToOrder(v)
 	}
 
 	return listModel, nil
@@ -108,4 +109,91 @@ func (or *OrderRepository) DeleteOrder(ctx context.Context, id uuid.UUID) error 
 		return noOrderFound
 	}
 	return nil
+}
+
+func parseOrderPayments(data []byte) []model.Payment {
+	var summaries []orderPaymentSummary
+
+	if err := json.Unmarshal(data, &summaries); err != nil {
+		return nil
+	}
+
+	payments := make([]model.Payment, 0, len(summaries))
+	for _, s := range summaries {
+		payments = append(payments, model.Payment{
+			ID:     s.ID,
+			Method: s.Method,
+			Status: s.Status,
+			Amount: s.Amount,
+		})
+	}
+
+	return payments
+}
+
+func MapListOrdersToOrder(row sqlcgen.ListOrdersRow) model.Order {
+	user := model.MapToUserModel(row.User)
+	product := model.MapToProductModel(row.Product)
+
+	payments := parseOrderPayments(row.Payments)
+
+	return model.Order{
+		ID:           row.Order.ID,
+		UserID:       row.Order.UserID,
+		ProductID:    row.Order.ProductID,
+		OrderedPrice: row.Order.OrderedPrice,
+		Status:       row.Order.Status,
+		CreatedAt:    row.Order.CreatedAt,
+		UpdatedAt:    row.Order.UpdatedAt,
+		DeletedAt:    row.Order.DeletedAt,
+		User:         &user,
+		Product:      &product,
+		Payment:      payments,
+	}
+}
+
+func MapListOrdersByUserToOrder(row sqlcgen.ListOrdersByUserRow) model.Order {
+	user := model.MapToUserModel(row.User)
+	product := model.MapToProductModel(row.Product)
+
+	payments := parseOrderPayments(row.Payments)
+
+	return model.Order{
+		ID:           row.Order.ID,
+		UserID:       row.Order.UserID,
+		ProductID:    row.Order.ProductID,
+		OrderedPrice: row.Order.OrderedPrice,
+		Status:       row.Order.Status,
+		CreatedAt:    row.Order.CreatedAt,
+		UpdatedAt:    row.Order.UpdatedAt,
+		DeletedAt:    row.Order.DeletedAt,
+		User:         &user,
+		Product:      &product,
+		Payment:      payments,
+	}
+}
+
+func mapGetOrderByIDToOrder(row sqlcgen.GetOrderByIDRow) model.Order {
+	user := model.MapToUserModel(row.User)
+	product := model.MapToProductModel(row.Product)
+
+	var payments []model.Payment
+	err := json.Unmarshal(row.Payments, &payments)
+	if err != nil {
+		panic(err)
+	}
+
+	return model.Order{
+		ID:           row.Order.ID,
+		UserID:       row.Order.UserID,
+		ProductID:    row.Order.ProductID,
+		OrderedPrice: row.Order.OrderedPrice,
+		Status:       row.Order.Status,
+		CreatedAt:    row.Order.CreatedAt,
+		UpdatedAt:    row.Order.UpdatedAt,
+		DeletedAt:    row.Order.DeletedAt,
+		User:         &user,
+		Product:      &product,
+		Payment:      payments,
+	}
 }

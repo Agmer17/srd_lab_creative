@@ -63,7 +63,7 @@ func (ps *ProjectService) CreateProject(ctx context.Context, dto createProjectRe
 		return model.Project{}, shared.NewErrorResponse(400, "invalid order id!")
 	}
 
-	orderData, getErr := ps.orderService.GetOrderById(ctx, orderId)
+	orderData, getErr := ps.orderService.GetOrderById(ctx, orderId, userId, "ADMIN")
 	if getErr != nil {
 		return model.Project{}, getErr
 	}

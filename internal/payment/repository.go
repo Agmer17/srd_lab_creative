@@ -21,76 +21,76 @@ func NewPaymentRepository(q *sqlcgen.Queries) *PaymentRepository {
 	}
 }
 
-var ErrUserNotFound = errors.New("user not found");
-var ErrOrderNotFound = errors.New("order not found");
-var ErrPaymentNotFound = errors.New("payment not found");
+var ErrUserNotFound = errors.New("user not found")
+var ErrOrderNotFound = errors.New("order not found")
+var ErrPaymentNotFound = errors.New("payment not found")
 
-func (Pr *PaymentRepository) CheckUserExist(ctx context.Context, userID uuid.UUID) (model.User,error){
-	data,err := Pr.db.GetUserById(ctx,userID);
-	if err != nil{
-		if errors.Is(err, pgx.ErrNoRows){
-			return model.User{}, ErrUserNotFound;
+func (Pr *PaymentRepository) CheckUserExist(ctx context.Context, userID uuid.UUID) (model.User, error) {
+	data, err := Pr.db.GetUserById(ctx, userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return model.User{}, ErrUserNotFound
 		}
-		return model.User{}, err;
+		return model.User{}, err
 	}
-	return model.MapToUserModel(data),nil;
+	return model.MapToUserModel(data), nil
 }
 
-func (Pr *PaymentRepository) GetOrderDataById(ctx context.Context, userID, orderID uuid.UUID) (model.Order,error){
-	data,err := Pr.db.GetOrderByID(ctx,orderID);
-	if err != nil{
-		if errors.Is(err, pgx.ErrNoRows){
-			return model.Order{}, ErrOrderNotFound;
+func (Pr *PaymentRepository) GetOrderDataById(ctx context.Context, userID, orderID uuid.UUID) (model.Order, error) {
+	data, err := Pr.db.GetOrderByID(ctx, orderID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return model.Order{}, ErrOrderNotFound
 		}
-		return model.Order{}, err;
+		return model.Order{}, err
 	}
-	return model.OrderDataToModel(data.Order),nil;
+	return model.OrderDataToModel(data.Order), nil
 }
 
-func (Pr *PaymentRepository) GetLatestPayment(ctx context.Context, userID, orderID uuid.UUID)(model.Payment,error){
-	
-	data,err := Pr.db.GetLatestPayment(ctx,sqlcgen.GetLatestPaymentParams{
-		UserID: userID,
+func (Pr *PaymentRepository) GetLatestPayment(ctx context.Context, userID, orderID uuid.UUID) (model.Payment, error) {
+
+	data, err := Pr.db.GetLatestPayment(ctx, sqlcgen.GetLatestPaymentParams{
+		UserID:  userID,
 		OrderID: orderID,
-	})
-	if err != nil{
-		if errors.Is(err, pgx.ErrNoRows){
-			return model.Payment{}, ErrPaymentNotFound;
-		}
-		return model.Payment{}, err;
-	}
-	return model.MapToPaymentModel(data),nil;
-}
-
-func (Pr *PaymentRepository) CreatePayment(ctx context.Context, orderID uuid.UUID, method string, amount float64)(model.Payment,error){
-	data,err := Pr.db.CreateNewPayment(ctx,sqlcgen.CreateNewPaymentParams{
-		OrderID: orderID,
-		Method: &method,
-		Amount: amount,
 	})
 	if err != nil {
-		return model.Payment{},err;
+		if errors.Is(err, pgx.ErrNoRows) {
+			return model.Payment{}, ErrPaymentNotFound
+		}
+		return model.Payment{}, err
 	}
-	return model.MapToPaymentModel(data),nil;
+	return model.MapToPaymentModel(data), nil
+}
+
+func (Pr *PaymentRepository) CreatePayment(ctx context.Context, orderID uuid.UUID, method string, amount float64) (model.Payment, error) {
+	data, err := Pr.db.CreateNewPayment(ctx, sqlcgen.CreateNewPaymentParams{
+		OrderID: orderID,
+		Method:  &method,
+		Amount:  amount,
+	})
+	if err != nil {
+		return model.Payment{}, err
+	}
+	return model.MapToPaymentModel(data), nil
 
 }
 
-func (Pr *PaymentRepository) UpdatePaymentWithGatewayData (ctx context.Context, oldPaymentData model.Payment, updateData PakasirResponse) (model.Payment,error){
-	expiredAt,_ := time.Parse(time.RFC3339,updateData.Payment.ExpiredAt)
-	data,err := Pr.db.UpdatePaymentWithGatewayData(ctx,sqlcgen.UpdatePaymentWithGatewayDataParams{
-		ID: oldPaymentData.ID,
-		Fee: &updateData.Payment.Fee,
-		TotalPayment: &updateData.Payment.TotalPayment,
-		ExpiredAt: &expiredAt,
+func (Pr *PaymentRepository) UpdatePaymentWithGatewayData(ctx context.Context, oldPaymentData model.Payment, updateData PakasirResponse) (model.Payment, error) {
+	expiredAt, _ := time.Parse(time.RFC3339, updateData.Payment.ExpiredAt)
+	data, err := Pr.db.UpdatePaymentWithGatewayData(ctx, sqlcgen.UpdatePaymentWithGatewayDataParams{
+		ID:            oldPaymentData.ID,
+		Fee:           &updateData.Payment.Fee,
+		TotalPayment:  &updateData.Payment.TotalPayment,
+		ExpiredAt:     &expiredAt,
 		PaymentNumber: &updateData.Payment.PaymentNumber,
 	})
-	if err != nil{
-		return model.Payment{},err;
+	if err != nil {
+		return model.Payment{}, err
 	}
-	return model.MapToPaymentModel(data),nil;
+	return model.MapToPaymentModel(data), nil
 }
 
-func (Pr *PaymentRepository) UpdateExpired(ctx context.Context,paymentID uuid.UUID) error {
+func (Pr *PaymentRepository) MarkAsExpired(ctx context.Context, paymentID uuid.UUID) error {
 	err := Pr.db.SetPaymentExpired(ctx, paymentID)
 	if err != nil {
 		return err
@@ -98,62 +98,61 @@ func (Pr *PaymentRepository) UpdateExpired(ctx context.Context,paymentID uuid.UU
 	return nil
 }
 
-func (Pr *PaymentRepository) UpdateCanceled(ctx context.Context, paymentID uuid.UUID) (model.Payment,error){
-	data,err := Pr.db.SetPaymentCancelled(ctx,paymentID);
+func (Pr *PaymentRepository) UpdateCanceled(ctx context.Context, paymentID uuid.UUID) (model.Payment, error) {
+	data, err := Pr.db.SetPaymentCancelled(ctx, paymentID)
 	if err != nil {
-		return model.Payment{},err;
+		return model.Payment{}, err
 	}
-	return model.MapToPaymentModel(data),nil;
+	return model.MapToPaymentModel(data), nil
 }
 
-
-func (Pr *PaymentRepository) GetPaymentByID(ctx context.Context, userID, paymentID uuid.UUID) (model.Payment,error){
-	data, err := Pr.db.GetPaymentById(ctx,sqlcgen.GetPaymentByIdParams{
-		ID: paymentID,
+func (Pr *PaymentRepository) GetPaymentByID(ctx context.Context, userID, paymentID uuid.UUID) (model.Payment, error) {
+	data, err := Pr.db.GetPaymentById(ctx, sqlcgen.GetPaymentByIdParams{
+		ID:     paymentID,
 		UserID: userID,
 	})
-	if err != nil{
-		if errors.Is(err,pgx.ErrNoRows){
-			return model.Payment{},ErrPaymentNotFound;	
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return model.Payment{}, ErrPaymentNotFound
 		}
-			return model.Payment{},err;
+		return model.Payment{}, err
 	}
-	return model.MapToPaymentModel(data),nil;
+	return model.MapToPaymentModel(data), nil
 }
 
-func (Pr *PaymentRepository) GetAllPaymentsByUserID(ctx context.Context, userID uuid.UUID) ([]model.Payment,error){
-	data, err := Pr.db.GetAllPayments(ctx,userID);
-	if err != nil{
-		return []model.Payment{},err;
+func (Pr *PaymentRepository) GetAllPaymentsByUserID(ctx context.Context, userID uuid.UUID) ([]model.Payment, error) {
+	data, err := Pr.db.GetAllPayments(ctx, userID)
+	if err != nil {
+		return []model.Payment{}, err
 	}
-	return model.MapListToPaymentModel(data),nil;
+	return model.MapListToPaymentModel(data), nil
 }
 
-func (Pr *PaymentRepository) UpdateWithResyncData (ctx context.Context, paymentID uuid.UUID, newData PakasirStatusResponse) (model.Payment,error){
-	convertedTime, errParse := time.Parse(time.RFC3339,newData.Transaction.CompletedAt);
-	if errParse != nil{
-		return model.Payment{},errParse;
+func (Pr *PaymentRepository) UpdateWithResyncData(ctx context.Context, paymentID uuid.UUID, newData PakasirStatusResponse) (model.Payment, error) {
+	convertedTime, errParse := time.Parse(time.RFC3339, newData.Transaction.CompletedAt)
+	if errParse != nil {
+		return model.Payment{}, errParse
 	}
-	data, err := Pr.db.UpdatePaymentStatus(ctx,sqlcgen.UpdatePaymentStatusParams{
-		ID: paymentID,
+	data, err := Pr.db.UpdatePaymentStatus(ctx, sqlcgen.UpdatePaymentStatusParams{
+		ID:     paymentID,
 		Status: newData.Transaction.Status,
 		PaidAt: &convertedTime,
-	});
-	if err != nil{
-		return model.Payment{},err;
+	})
+	if err != nil {
+		return model.Payment{}, err
 	}
-	return model.MapToPaymentModel(data),nil;
+	return model.MapToPaymentModel(data), nil
 }
 
-func (Pr *PaymentRepository) GetPaymentByIDWithoutUserID(ctx context.Context,paymentID uuid.UUID) (model.Payment,error){
-	data, err := Pr.db.GetPaymentByIdOnly(ctx,paymentID);
-	if err != nil{
-		if errors.Is(err,pgx.ErrNoRows){
-			return model.Payment{},ErrPaymentNotFound;	
+func (Pr *PaymentRepository) GetPaymentByIDWithoutUserID(ctx context.Context, paymentID uuid.UUID) (model.Payment, error) {
+	data, err := Pr.db.GetPaymentByIdOnly(ctx, paymentID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return model.Payment{}, ErrPaymentNotFound
 		}
-			return model.Payment{},err;
+		return model.Payment{}, err
 	}
-	return model.MapToPaymentModel(data),nil;
+	return model.MapToPaymentModel(data), nil
 }
 
 func (Pr *PaymentRepository) UpdateStatusFromWebhook(ctx context.Context, paymentID uuid.UUID, webhookStatus string, completedAt string) (model.Payment, error) {
@@ -173,7 +172,7 @@ func (Pr *PaymentRepository) UpdateStatusFromWebhook(ctx context.Context, paymen
 		Status: dbStatus,
 		PaidAt: paidAt,
 	})
-	
+
 	if err != nil {
 		return model.Payment{}, err
 	}

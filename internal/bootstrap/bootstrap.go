@@ -28,7 +28,14 @@ type App struct {
 	Repositories *RepositoryConfigs
 }
 
-func NewApp(ctx context.Context, router *gin.Engine, googleClient string, googleSecret string, pool *pgxpool.Pool, redisCli *redis.Client) *App {
+func NewApp(ctx context.Context, router *gin.Engine,
+	googleClient string,
+	googleSecret string,
+	domain string,
+	apiKey string,
+	pool *pgxpool.Pool,
+	redisCli *redis.Client,
+) *App {
 	db := sqlcgen.New(pool)
 
 	// setup melody
@@ -48,6 +55,8 @@ func NewApp(ctx context.Context, router *gin.Engine, googleClient string, google
 		ctx,
 		googleClient,
 		googleSecret,
+		domain,
+		apiKey,
 		repoConfigs,
 		mel,
 		redisCli,
@@ -62,8 +71,9 @@ func NewApp(ctx context.Context, router *gin.Engine, googleClient string, google
 
 	orderHandler := order.NewOrderHandler(serviceConfigs.OrderService)
 	projectHandler := project.NewProjectHandler(serviceConfigs.ProjectService)
-	paymentHandler := payment.NewPaymentHandler(serviceConfigs.PaymentService);
+
 	reviewHandler := review.NewReviewHandler(serviceConfigs.ReviewService)
+	paymentHandler := payment.NewPaymentHandler(serviceConfigs.PaymentService)
 
 	chatHandler := chat.NewChatHandler(serviceConfigs.MessaginService)
 	// ws

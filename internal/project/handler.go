@@ -448,6 +448,9 @@ func (ph *ProjectHandler) RegisterRoutes(r gin.IRouter) {
 	projectApi := r.Group("/project")
 	projectApi.Use(middleware.AuthMiddleware())
 	projectApi.GET("/details/:id", ph.HandleGetDetail)
+	// member client endpoint
+	projectApi.GET("/:projectId/members", ph.HandleGetAllMember)
+	projectApi.GET("/:projectId/progress", ph.GetProgressFromProject)
 
 	projectAdmin := projectApi.Group("/")
 	projectAdmin.Use(middleware.RoleMiddleware(middleware.RoleAdmin))
@@ -456,11 +459,6 @@ func (ph *ProjectHandler) RegisterRoutes(r gin.IRouter) {
 	projectAdmin.POST("/add", ph.PostCreateProject)
 	projectAdmin.DELETE("/delete/:id", ph.DeleteProjectHandle)
 	projectAdmin.PATCH("/update/:id", ph.PatchProjectData)
-
-	// member client endpoint
-	projectApi.GET("/:projectId/members", ph.HandleGetAllMember)
-	projectApi.GET("/:projectId/progress", ph.GetProgressFromProject)
-
 	// admin members endpoint
 	projectAdmin.POST("/:projectId/members/add", ph.PostNewMember)
 	projectAdmin.PATCH("/:projectId/members/update", ph.PatchMemberData)

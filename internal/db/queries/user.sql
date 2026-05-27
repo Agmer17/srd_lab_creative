@@ -83,3 +83,10 @@ RETURNING *;
 -- name: HardDeleteUser :exec
 DELETE FROM users
 WHERE id = sqlc.arg(id);
+
+-- name: GetUsersByRole :many
+SELECT *
+FROM users
+WHERE deleted_at IS NULL
+	AND global_role = sqlc.arg(role)
+ORDER BY created_at DESC;

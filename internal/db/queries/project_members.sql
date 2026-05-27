@@ -206,3 +206,11 @@ JOIN users u
 
 JOIN roles r 
     ON r.id = pm.role_id;
+
+-- name: GetUserProjectMemberships :many
+SELECT 
+    project_id
+FROM project_members
+WHERE user_id = sqlc.arg('user_id')
+  AND left_at IS NULL
+ORDER BY joined_at DESC;

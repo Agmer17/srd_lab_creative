@@ -333,6 +333,35 @@ func (q *Queries) GetProjectMemberByID(ctx context.Context, id uuid.UUID) (GetPr
 	return i, err
 }
 
+const getUserProjectMemberships = `-- name: GetUserProjectMemberships :many
+SELECT 
+    project_id
+FROM project_members
+WHERE user_id = $1
+  AND left_at IS NULL
+ORDER BY joined_at DESC
+`
+
+func (q *Queries) GetUserProjectMemberships(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, getUserProjectMemberships, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var project_id uuid.UUID
+		if err := rows.Scan(&project_id); err != nil {
+			return nil, err
+		}
+		items = append(items, project_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listProjectMembersWithUser = `-- name: ListProjectMembersWithUser :many
 SELECT 
     pm.id,

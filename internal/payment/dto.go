@@ -29,11 +29,12 @@ var ValidPaymentMethods = map[string]bool{
 	string(MethodArthaGrahaVA): true,
 	string(MethodBRIVA):        true,
 }
+
 type PakasirRequest struct {
-	Project string  `json:"project"`
-	OrderID uuid.UUID  `json:"order_id"`
-	Amount  float64 `json:"amount"`
-	APIKey  string  `json:"api_key"`
+	Project string    `json:"project"`
+	OrderID uuid.UUID `json:"order_id"`
+	Amount  float64   `json:"amount"`
+	APIKey  string    `json:"api_key"`
 }
 
 type PakasirResponse struct {
@@ -58,4 +59,8 @@ type PakasirStatusResponse struct {
 		PaymentMethod string  `json:"payment_method"`
 		CompletedAt   string  `json:"completed_at"`
 	} `json:"transaction"`
+}
+
+type CreateOrderDto struct {
+	Method string `json:"method" binding:"required,oneof=cimb_niaga_va bni_va qris sampoerna_va bnc_va maybank_va permata_va atm_bersama_va artha_graha_va bri_va"`
 }

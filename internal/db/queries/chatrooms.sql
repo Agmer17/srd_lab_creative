@@ -19,3 +19,13 @@ WHERE project_id = sqlc.arg('project_id');
 -- name: GetChatroomByParticipantKey :one
 SELECT * FROM chatrooms
 WHERE participant_key = sqlc.arg('participant_key');
+
+-- name: GetUserProjectChatroomIDs :many
+SELECT 
+    c.id
+FROM chatrooms c
+INNER JOIN project_members pm ON c.project_id = pm.project_id
+WHERE pm.user_id = $1
+  AND c.type = 'project'
+  AND pm.left_at IS NULL
+ORDER BY c.created_at DESC;

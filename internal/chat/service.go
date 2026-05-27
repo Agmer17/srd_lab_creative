@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"slices"
 	"time"
 
 	"github.com/Agmer17/srd_lab_creative/internal/shared"
@@ -54,6 +55,7 @@ func (ms *MessagingService) CreateProjectMessage(ctx context.Context, curr, proj
 	}
 
 	if !vld {
+
 		return ChatDataDto{}, shared.NewErrorResponse(403, "you are forbidden to sending message to this room")
 	}
 
@@ -62,8 +64,19 @@ func (ms *MessagingService) CreateProjectMessage(ctx context.Context, curr, proj
 		return ChatDataDto{}, svErr
 	}
 
-	chatPayloadData := ms.ChatmodelToDto(ctx, chat, curr)
+	// query member project buat bikin signed url gambarnya
+	// andaikan sqlc bagus cte recursive nya
+	memData, getErr := ms.roomService.GetProjectChatroomMember(ctx, projectId)
+	if getErr != nil {
+		return ChatDataDto{}, getErr
+	}
 
+	memId := make([]string, len(memData))
+	for i, v := range memData {
+		memId[i] = v.User.ID.String()
+	}
+
+	chatPayloadData := ms.ChatmodelToDto(ctx, chat, memId)
 	dataPayload, _ := json.Marshal(chatPayloadData)
 
 	wsPayload := ws.WebsocketEvent{
@@ -74,35 +87,56 @@ func (ms *MessagingService) CreateProjectMessage(ctx context.Context, curr, proj
 	payload, _ := json.Marshal(wsPayload)
 
 	ms.hub.SendPayloadTo("room:"+chat.RoomID.String(), payload)
-
 	return chatPayloadData, nil
 }
 
-func (ms *MessagingService) GetAllMessageFromProject(ctx context.Context, curr, projectId, roomId uuid.UUID) ([]ChatDataDto, *shared.ErrorResponse) {
+func (ms *MessagingService) GetAllMessageFromProject(ctx context.Context, curr, projectId uuid.UUID) ([]ChatDataDto, *shared.ErrorResponse) {
 	vld, err := ms.validateChatroomMember(ctx, curr, projectId)
 	if err != nil {
 		return []ChatDataDto{}, shared.NewErrorResponse(500, "something wrong while trying to get message data")
 	}
 
 	if !vld {
-		return []ChatDataDto{}, shared.NewErrorResponse(403, "you are forbidden to sending message to this room")
+		// cek dulu apakah miss cache atau emg bukan anggota project
+		// bisa di optimasi lagi dengan mastiin cache nya gak miss
+		// cuman malas refactor dl udah deket juga
+		members, err := ms.roomService.GetProjectChatroomMember(ctx, projectId)
+		if err != nil {
+			return []ChatDataDto{}, err
+		}
+
+		authorize := false
+		for _, v := range members {
+			if v.User.ID == curr {
+				authorize = true
+				break
+			}
+		}
+
+		if !authorize {
+			return []ChatDataDto{}, shared.NewErrorResponse(403, "you are forbidden to sending message to this room")
+		}
 	}
 
-	data, getErr := ms.chatService.GetChatsByRoomID(ctx, roomId)
+	roomData, getRoomErr := ms.roomService.GetChatroomByProjectID(ctx, projectId)
+	if getRoomErr != nil {
+		return []ChatDataDto{}, getRoomErr
+	}
+
+	data, getErr := ms.chatService.GetChatsByRoomID(ctx, roomData.Id)
 	if getErr != nil {
 		return []ChatDataDto{}, shared.NewErrorResponse(500, "something wrong while trying to get message data")
 	}
 
 	var listDto []ChatDataDto = make([]ChatDataDto, len(data))
 	for i, v := range data {
-		listDto[i] = ms.ChatmodelToDto(ctx, v, curr)
+		listDto[i] = ms.ChatmodelToDto(ctx, v, []string{curr.String()})
 	}
 
 	return listDto, nil
 }
 
 func (ms *MessagingService) validateChatroomMember(ctx context.Context, curr uuid.UUID, projectId uuid.UUID) (bool, error) {
-
 	setKey := "member:" + projectId.String()
 	isMember, err := ms.rdb.SIsMember(ctx, setKey, curr.String()).Result()
 	if err != nil {
@@ -112,8 +146,7 @@ func (ms *MessagingService) validateChatroomMember(ctx context.Context, curr uui
 	return isMember, nil
 }
 
-func (ms *MessagingService) ChatmodelToDto(ctx context.Context, chat model.Chat, curr uuid.UUID) ChatDataDto {
-	// Convert chat media nya jadi signed url
+func (ms *MessagingService) ChatmodelToDto(ctx context.Context, chat model.Chat, mem []string) ChatDataDto {
 	return ChatDataDto{
 		Id:                   chat.ID,
 		ChatRoomId:           chat.RoomID,
@@ -121,12 +154,12 @@ func (ms *MessagingService) ChatmodelToDto(ctx context.Context, chat model.Chat,
 		SenderFullName:       chat.Sender.FullName,
 		SenderProfilePiCture: *chat.Sender.ProfilePicture,
 		Text:                 *chat.Text,
-		Media:                ms.ChatmediaToModel(ctx, chat.Medias, curr),
+		Media:                ms.ChatmediaToModel(ctx, chat.Medias, mem),
 		CreatedAt:            chat.CreatedAt,
 	}
 }
 
-func (ms *MessagingService) ChatmediaToModel(ctx context.Context, med []model.ChatMedia, curr uuid.UUID) []ChatMediaType {
+func (ms *MessagingService) ChatmediaToModel(ctx context.Context, med []model.ChatMedia, allowed []string) []ChatMediaType {
 	if len(med) == 0 {
 		return nil
 	}
@@ -134,7 +167,6 @@ func (ms *MessagingService) ChatmediaToModel(ctx context.Context, med []model.Ch
 	pipe := ms.rdb.Pipeline()
 	media := make([]ChatMediaType, len(med))
 	for i, v := range med {
-
 		randToken, _ := pkg.GenerateSecureString(24)
 		hashkey := "media_access:private:" + randToken
 		media[i] = ChatMediaType{
@@ -142,10 +174,12 @@ func (ms *MessagingService) ChatmediaToModel(ctx context.Context, med []model.Ch
 			Url:  "http://localhost/api/chat/private-media/" + randToken,
 		}
 
+		allowedStr, _ := json.Marshal(allowed)
+
 		pipe.HSet(ctx, hashkey, map[string]interface{}{
 			"type":         v.MediaType,
 			"filename":     v.FileName,
-			"allowed_user": curr.String(),
+			"allowed_user": allowedStr,
 		})
 
 		pipe.Expire(ctx, hashkey, time.Hour)
@@ -161,17 +195,33 @@ func (ms *MessagingService) ChatmediaToModel(ctx context.Context, med []model.Ch
 func (ms *MessagingService) GetMediaAccessFromToken(ctx context.Context, token string, curr uuid.UUID) (string, *shared.ErrorResponse) {
 
 	hashkey := "media_access:private:" + token
+
 	data, err := ms.rdb.HGetAll(ctx, hashkey).Result()
+	fmt.Println("ERROR : ", err)
 	if err != nil {
 		return "", shared.NewErrorResponse(500, "something wrong while trying to get file")
 	}
 
-	allowedUser := data["allowed_user"]
-	if allowedUser != curr.String() {
-		return "", shared.NewErrorResponse(403, "access to this media is forbidden")
+	var allowedUsers []string
+	authorize := false
+	err = json.Unmarshal(
+		[]byte(data["allowed_user"]),
+		&allowedUsers,
+	)
+	if err != nil {
+		return "", shared.NewErrorResponse(500, "something wrong while trying to get file")
+	}
+
+	if slices.Contains(allowedUsers, curr.String()) {
+		authorize = true
+	}
+
+	if !authorize {
+		return "", shared.NewErrorResponse(403, "you are forbidden to access this media")
 	}
 
 	fileName := path.Join(ms.serverStorage.PrivatePath, chatMediaAtt, data["filename"])
+	fmt.Println("filename ", fileName)
 	return fileName, nil
 }
 
@@ -224,7 +274,7 @@ func (ms *MessagingService) CreatePersonalChat(
 		return ChatDataDto{}, shared.NewErrorResponse(500, "failed to create chat")
 	}
 
-	dtoChat := ms.ChatmodelToDto(ctx, chat, curr)
+	dtoChat := ms.ChatmodelToDto(ctx, chat, []string{target.String(), curr.String()})
 
 	dataPayload, _ := json.Marshal(dtoChat)
 
@@ -236,6 +286,7 @@ func (ms *MessagingService) CreatePersonalChat(
 	payload, _ := json.Marshal(wsPayload)
 
 	ms.hub.SendPayloadTo(target.String(), payload)
+	ms.hub.SendPayloadTo(curr.String(), payload)
 	return dtoChat, nil
 }
 
@@ -258,10 +309,14 @@ func (ms *MessagingService) GetPersonalChatData(ctx context.Context, roomId, cur
 
 	var listDto []ChatDataDto = make([]ChatDataDto, len(data))
 	for i, v := range data {
-		listDto[i] = ms.ChatmodelToDto(ctx, v, curr)
+		listDto[i] = ms.ChatmodelToDto(ctx, v, []string{curr.String()})
 	}
 
 	return listDto, nil
+}
+
+func (ms *MessagingService) GetCurrentUserPartOf(ctx context.Context, curr uuid.UUID) ([]uuid.UUID, *shared.ErrorResponse) {
+	return ms.roomService.GetCurrentUserPartOf(ctx, curr)
 }
 
 func CompareUUID(u1, u2 string) string {
@@ -288,4 +343,34 @@ func CompareUUID(u1, u2 string) string {
 	}
 
 	return u2 + ":" + u1
+}
+
+func (ms *MessagingService) handleCacheMissMember(ctx context.Context, userId, projectId uuid.UUID) (bool, *shared.ErrorResponse) {
+	hashKey := "member:" + projectId.String() + ":" + userId.String()
+
+	data, err := ms.rdb.HGetAll(ctx, hashKey).Result()
+	if err != nil {
+		fmt.Println(err)
+		return false, shared.NewErrorResponse(500, "something wrong while trying to get user data")
+	}
+
+	if len(data) > 0 {
+		fmt.Println("\n\n\n\nCACHE HIT CHAT MODULE")
+		return true, nil
+	}
+
+	tempData, getErr := ms.roomService.GetProjectChatroomMember(ctx, projectId)
+	if getErr != nil {
+		return false, getErr
+	}
+
+	authorize := false
+	for _, v := range tempData {
+		if userId == v.User.ID {
+			authorize = true
+			break
+		}
+	}
+
+	return authorize, nil
 }
