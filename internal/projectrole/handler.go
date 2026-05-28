@@ -120,12 +120,12 @@ func (prh *ProjectRoleHandler) RegisterRoutes(r gin.IRouter) {
 	roleApi := r.Group("/project-role")
 
 	roleApi.Use(middleware.AuthMiddleware())
-	roleApi.Use(middleware.RoleMiddleware(middleware.RoleAdmin))
-
 	roleApi.GET("/get-all", prh.HandleGetAllRole)
 	roleApi.GET("/search", prh.HandleSearchRole)
-	roleApi.POST("/add", prh.PostCreateNewRole)
-	roleApi.PATCH("/update/:id", prh.PatchRole)
-	roleApi.DELETE("/delete/:id", prh.DeleteRoleHandler)
+
+	adminRoleEndpoint := roleApi.Use(middleware.RoleMiddleware(middleware.RoleAdmin))
+	adminRoleEndpoint.POST("/add", prh.PostCreateNewRole)
+	adminRoleEndpoint.PATCH("/update/:id", prh.PatchRole)
+	adminRoleEndpoint.DELETE("/delete/:id", prh.DeleteRoleHandler)
 
 }
