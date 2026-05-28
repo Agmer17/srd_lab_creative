@@ -91,3 +91,11 @@ func (r *ReviewRepository) GetProductByID(ctx context.Context, id uuid.UUID) (mo
 	}
 	return model.MapToProductModel(data), nil
 }
+
+func (r *ReviewRepository) ListReviewsByUser(ctx context.Context, userID uuid.UUID) ([]model.Review, error) {
+	data, err := r.db.ListReviewsByUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	return model.MapListToReviewByUserModel(data), nil
+}

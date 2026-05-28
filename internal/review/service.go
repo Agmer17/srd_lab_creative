@@ -92,3 +92,11 @@ func (s *ReviewService) UpdateReviewShowStatus(ctx context.Context, id uuid.UUID
 	}
 	return review, nil
 }
+
+func (s *ReviewService) ListMyReviews(ctx context.Context, userID uuid.UUID) ([]model.Review, *shared.ErrorResponse) {
+	reviews, err := s.repo.ListReviewsByUser(ctx, userID)
+	if err != nil {
+		return nil, shared.NewErrorResponse(500, "failed to get user reviews")
+	}
+	return reviews, nil
+}

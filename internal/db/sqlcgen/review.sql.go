@@ -209,6 +209,61 @@ func (q *Queries) ListReviewsByProduct(ctx context.Context, productID uuid.UUID)
 	return items, nil
 }
 
+const listReviewsByUser = `-- name: ListReviewsByUser :many
+SELECT
+    r.id, r.user_id, r.product_id, r.order_id, r.rating, r.comment, r.show, r.created_at, r.updated_at,
+    p.id, p.name, p.slug, p.description, p.price, p.status, p.is_featured, p.created_at, p.updated_at, p.deleted_at
+FROM reviews r
+JOIN products p ON p.id = r.product_id
+WHERE r.user_id = $1
+ORDER BY r.created_at DESC
+`
+
+type ListReviewsByUserRow struct {
+	Review  Review
+	Product Product
+}
+
+func (q *Queries) ListReviewsByUser(ctx context.Context, userID uuid.UUID) ([]ListReviewsByUserRow, error) {
+	rows, err := q.db.Query(ctx, listReviewsByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListReviewsByUserRow
+	for rows.Next() {
+		var i ListReviewsByUserRow
+		if err := rows.Scan(
+			&i.Review.ID,
+			&i.Review.UserID,
+			&i.Review.ProductID,
+			&i.Review.OrderID,
+			&i.Review.Rating,
+			&i.Review.Comment,
+			&i.Review.Show,
+			&i.Review.CreatedAt,
+			&i.Review.UpdatedAt,
+			&i.Product.ID,
+			&i.Product.Name,
+			&i.Product.Slug,
+			&i.Product.Description,
+			&i.Product.Price,
+			&i.Product.Status,
+			&i.Product.IsFeatured,
+			&i.Product.CreatedAt,
+			&i.Product.UpdatedAt,
+			&i.Product.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateReviewShowStatus = `-- name: UpdateReviewShowStatus :one
 UPDATE reviews
 SET show = $2,

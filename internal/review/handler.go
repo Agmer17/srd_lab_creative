@@ -108,6 +108,22 @@ func (h *ReviewHandler) PatchUpdateReviewShowStatus(c *gin.Context) {
 	c.JSON(200, shared.NewSuccessResponse(200, "Review show status successfully updated", data))
 }
 
+func (h *ReviewHandler) HandleListMyReviews(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		c.JSON(401, shared.NewErrorResponse(401, "unauthorized"))
+		return
+	}
+
+	data, err := h.svc.ListMyReviews(c, userID)
+	if err != nil {
+		c.JSON(err.Code, err)
+		return
+	}
+
+	c.JSON(200, shared.NewSuccessResponse(200, "My reviews successfully retrieved", data))
+}
+
 func (h *ReviewHandler) RegisterRoutes(r gin.IRouter) {
 	reviewApi := r.Group("/reviews")
 
@@ -119,6 +135,7 @@ func (h *ReviewHandler) RegisterRoutes(r gin.IRouter) {
 	userRoutes := reviewApi.Group("/")
 	userRoutes.Use(middleware.AuthMiddleware())
 	userRoutes.POST("/create", h.PostCreateReview)
+	userRoutes.GET("/my-reviews", h.HandleListMyReviews)
 
 	// Admin routes
 	adminRoutes := reviewApi.Group("/")

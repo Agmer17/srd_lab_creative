@@ -43,3 +43,12 @@ SET show = $2,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1
 RETURNING *;
+
+-- name: ListReviewsByUser :many
+SELECT
+    sqlc.embed(r),
+    sqlc.embed(p)
+FROM reviews r
+JOIN products p ON p.id = r.product_id
+WHERE r.user_id = $1
+ORDER BY r.created_at DESC;

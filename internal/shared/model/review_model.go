@@ -79,3 +79,20 @@ func MapListToFeaturedReviewModel(ls []sqlcgen.ListFeaturedReviewsRow) []Review 
 
 	return tempList
 }
+
+func MapToReviewWithProductModel(r sqlcgen.Review, p sqlcgen.Product) Review {
+	review := MapToReviewModel(r)
+	product := MapToProductModel(p)
+	review.Product = &product
+	return review
+}
+
+func MapListToReviewByUserModel(ls []sqlcgen.ListReviewsByUserRow) []Review {
+	tempList := make([]Review, len(ls))
+
+	for i, v := range ls {
+		tempList[i] = MapToReviewWithProductModel(v.Review, v.Product)
+	}
+
+	return tempList
+}
