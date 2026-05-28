@@ -162,6 +162,15 @@ func (ph *PaymentHandler) HandleGetPaymentHistory(c *gin.Context) {
 	c.JSON(200, shared.NewSuccessResponse(200, "Payment history successfully retrieved", data))
 }
 
+func (ph *PaymentHandler) HandleGetAllPaymentsForAdmin(c *gin.Context) {
+	data, errGet := ph.svc.GetAllPaymentsForAdmin(c)
+	if errGet != nil {
+		c.JSON(errGet.Code, errGet)
+		return
+	}
+	c.JSON(200, shared.NewSuccessResponse(200, "All payments successfully retrieved", data))
+}
+
 func (ph *PaymentHandler) PostManualSync(c *gin.Context) {
 	// Mengambil status real-time dari API Payment Gateway lalu melakukan pembaruan di DB lokal apabila webhook meleset.
 
@@ -212,4 +221,10 @@ func (ph *PaymentHandler) RegisterRoutes(r gin.IRouter) {
 
 	// Webhook Listener
 	paymentApi.POST("/webhook", ph.PostWebhookListener)
+
+	// Admin Routes
+	adminRoutes := paymentApi.Group("/")
+	adminRoutes.Use(middleware.AuthMiddleware())
+	adminRoutes.Use(middleware.RoleMiddleware(middleware.RoleAdmin))
+	adminRoutes.GET("/all", ph.HandleGetAllPaymentsForAdmin)
 }

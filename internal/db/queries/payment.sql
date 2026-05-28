@@ -67,3 +67,7 @@ SET
 WHERE id = $1
 RETURNING *;
 
+-- name: GetAllPaymentsForAdmin :many
+SELECT * FROM payments
+WHERE deleted_at IS NULL
+ORDER BY created_at DESC;

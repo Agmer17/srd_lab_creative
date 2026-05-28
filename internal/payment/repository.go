@@ -128,6 +128,14 @@ func (Pr *PaymentRepository) GetAllPaymentsByUserID(ctx context.Context, userID 
 	return model.MapListToPaymentModel(data), nil
 }
 
+func (Pr *PaymentRepository) GetAllPaymentsForAdmin(ctx context.Context) ([]model.Payment, error) {
+	data, err := Pr.db.GetAllPaymentsForAdmin(ctx)
+	if err != nil {
+		return []model.Payment{}, err
+	}
+	return model.MapListToPaymentModel(data), nil
+}
+
 func (Pr *PaymentRepository) UpdateWithResyncData(ctx context.Context, paymentID uuid.UUID, newData PakasirStatusResponse) (model.Payment, error) {
 	convertedTime, errParse := time.Parse(time.RFC3339, newData.Transaction.CompletedAt)
 	if errParse != nil {

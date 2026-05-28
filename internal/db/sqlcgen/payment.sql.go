@@ -89,6 +89,45 @@ func (q *Queries) GetAllPayments(ctx context.Context, userID uuid.UUID) ([]Payme
 	return items, nil
 }
 
+const getAllPaymentsForAdmin = `-- name: GetAllPaymentsForAdmin :many
+SELECT id, order_id, method, status, amount, fee, total_payment, payment_number, expired_at, paid_at, created_at, deleted_at FROM payments
+WHERE deleted_at IS NULL
+ORDER BY created_at DESC
+`
+
+func (q *Queries) GetAllPaymentsForAdmin(ctx context.Context) ([]Payment, error) {
+	rows, err := q.db.Query(ctx, getAllPaymentsForAdmin)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Payment
+	for rows.Next() {
+		var i Payment
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrderID,
+			&i.Method,
+			&i.Status,
+			&i.Amount,
+			&i.Fee,
+			&i.TotalPayment,
+			&i.PaymentNumber,
+			&i.ExpiredAt,
+			&i.PaidAt,
+			&i.CreatedAt,
+			&i.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getLatestPayment = `-- name: GetLatestPayment :one
 SELECT p.id, p.order_id, p.method, p.status, p.amount, p.fee, p.total_payment, p.payment_number, p.expired_at, p.paid_at, p.created_at, p.deleted_at FROM payments p
 JOIN orders o ON o.id = p.order_id

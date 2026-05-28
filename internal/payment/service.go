@@ -254,6 +254,20 @@ func (ps *PaymentService) GetTransactionHistory(ctx context.Context, userID uuid
 	return rawData, nil
 }
 
+func (ps *PaymentService) GetAllPaymentsForAdmin(ctx context.Context) ([]model.Payment, *shared.ErrorResponse) {
+	rawData, err := ps.repo.GetAllPaymentsForAdmin(ctx)
+	if err != nil {
+		return []model.Payment{}, shared.NewErrorResponse(500, "failed to get payments data")
+	}
+
+	for i := range rawData {
+		if rawData[i].Status == "unpaid" && rawData[i].ExpiredAt != nil && time.Now().After(*rawData[i].ExpiredAt) {
+			rawData[i].Status = "expired"
+		}
+	}
+	return rawData, nil
+}
+
 func (ps *PaymentService) SyncTransaction(ctx context.Context, userID, paymentID uuid.UUID) (model.Payment, *shared.ErrorResponse) {
 	// verif user
 	_, err := ps.repo.CheckUserExist(ctx, userID)
