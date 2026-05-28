@@ -443,6 +443,20 @@ func (ph *ProjectHandler) PatchUpdateRevisionStatus(c *gin.Context) {
 	c.JSON(200, shared.NewSuccessResponse(200, "successfully updating revision status", data))
 }
 
+func (ph *ProjectHandler) GetMyProjects(c *gin.Context) {
+
+	userId, _ := middleware.GetUserID(c)
+
+	data, err := ph.service.GetMyProjects(c.Request.Context(), userId)
+	if err != nil {
+		c.JSON(err.Code, err)
+		return
+	}
+
+	c.JSON(200, shared.NewSuccessResponse(200, "successfully getting the project data", data))
+
+}
+
 func (ph *ProjectHandler) RegisterRoutes(r gin.IRouter) {
 
 	projectApi := r.Group("/project")
@@ -451,6 +465,7 @@ func (ph *ProjectHandler) RegisterRoutes(r gin.IRouter) {
 	// member client endpoint
 	projectApi.GET("/:projectId/members", ph.HandleGetAllMember)
 	projectApi.GET("/:projectId/progress", ph.GetProgressFromProject)
+	projectApi.GET("/my-projects", ph.GetMyProjects)
 
 	projectAdmin := projectApi.Group("/")
 	projectAdmin.Use(middleware.RoleMiddleware(middleware.RoleAdmin))

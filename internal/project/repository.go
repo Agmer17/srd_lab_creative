@@ -214,3 +214,48 @@ func (pr *ProjectRepository) GetProjectDetailById(ctx context.Context, id uuid.U
 
 	return tempProject, nil
 }
+
+func (pr *ProjectRepository) GetMyProjct(ctx context.Context, curr uuid.UUID) ([]model.Project, error) {
+
+	data, err := pr.db.ListMyProjects(ctx, curr)
+	if err != nil {
+		return []model.Project{}, err
+	}
+
+	var listProjects []model.Project = make([]model.Project, len(data))
+
+	for i, v := range data {
+		tempProject := model.Project{
+			ID:                   v.ID,
+			OrderID:              v.OrderID,
+			Name:                 v.Name,
+			Description:          v.Description,
+			Status:               v.Status,
+			AllowedRevisionCount: v.AllowedRevisionCount,
+			ActualStartDate:      v.ActualStartDate,
+			EndDate:              v.EndDate,
+			UpdatedAt:            v.UpdatedAt,
+		}
+
+		var members []model.ProjectMember = make([]model.ProjectMember, 0)
+		err := json.Unmarshal(v.ProjectMembers, &members)
+		if err != nil {
+			fmt.Println(err)
+			return []model.Project{}, err
+		}
+
+		var progresses []model.ProjectProgress
+		err = json.Unmarshal(v.Progress, &progresses)
+		if err != nil {
+			fmt.Println(err)
+			return []model.Project{}, err
+		}
+
+		tempProject.Progress = progresses
+		tempProject.ProjectMembers = members
+
+		listProjects[i] = tempProject
+	}
+
+	return listProjects, nil
+}

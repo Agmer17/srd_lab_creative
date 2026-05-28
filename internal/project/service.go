@@ -88,7 +88,8 @@ func (ps *ProjectService) CreateProject(ctx context.Context, dto createProjectRe
 		IsOwner:   true,
 	}
 	memberData, insMemErr := ps.memberService.addNewMember(ctx, creatorData)
-	ps.memberService.setOneMembersRedis(ctx, memberData[0])
+	fmt.Println(memberData)
+	// ps.memberService.setOneMembersRedis(ctx, memberData[0])
 	if insMemErr != nil {
 		fmt.Println(memberData)
 		return model.Project{}, insMemErr
@@ -130,7 +131,6 @@ func (ps *ProjectService) UpdateProjectData(ctx context.Context, id uuid.UUID, d
 }
 
 func (ps *ProjectService) GetDetailById(ctx context.Context, id uuid.UUID, userId uuid.UUID) (model.Project, *shared.ErrorResponse) {
-
 	data, err := ps.projectRepo.GetProjectDetailById(ctx, id)
 	if err != nil {
 		if errors.Is(err, projectNotFound) {
@@ -141,7 +141,6 @@ func (ps *ProjectService) GetDetailById(ctx context.Context, id uuid.UUID, userI
 	}
 
 	allowed := false
-
 	for _, v := range data.ProjectMembers {
 		if v.User.ID == userId {
 			allowed = true
@@ -321,4 +320,13 @@ func (ps *ProjectService) UpdateRevisionStatus(ctx context.Context, curr uuid.UU
 	}
 
 	return ps.revisionService.UpdateProjectRevision(ctx, id, status)
+}
+
+func (ps *ProjectService) GetMyProjects(ctx context.Context, curr uuid.UUID) ([]model.Project, *shared.ErrorResponse) {
+	data, err := ps.projectRepo.GetMyProjct(ctx, curr)
+	if err != nil {
+		return []model.Project{}, shared.NewErrorResponse(500, "something wrong while trying to get the project data")
+	}
+
+	return data, nil
 }
