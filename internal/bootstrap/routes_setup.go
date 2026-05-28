@@ -1,6 +1,10 @@
 package bootstrap
 
-import "github.com/gin-gonic/gin"
+import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+)
 
 type BootstrapHandler interface {
 	RegisterRoutes(r gin.IRouter)
@@ -13,4 +17,5 @@ func SetupRoutes(router *gin.Engine, b ...BootstrapHandler) {
 	}
 
 	// todo : Handle public files path !
+	router.StaticFS("/uploads", http.Dir("./tmp/uploads"))
 }

@@ -387,7 +387,7 @@ func (pth *ProductHandler) RegisterRoutes(r gin.IRouter) {
 	productAdmin.Use(middleware.AuthMiddleware());
 	productAdmin.Use(middleware.RoleMiddleware(middleware.RoleAdmin));
 
-	productAdmin.POST("/add", pth.PostCreateProduct);
+	productApi.POST("/add", pth.PostCreateProduct);
 	productAdmin.PATCH("/update/:id", pth.PatchUpdateProduct);
 	productAdmin.DELETE("/delete/:id", pth.DeleteProductHandler);
 	productAdmin.GET("/id/:id", pth.HandleGetProductById);
@@ -414,7 +414,7 @@ func (pth *ProductHandler) RegisterRoutes(r gin.IRouter) {
 	productImagesPublic.GET("/id/:id", pth.HandleGetProductImageById);
 
 	// Ngambil seluruh gambar dari suatu produk
-	productImages.GET("/all/:product_id", pth.HandleGetAllProductImages);
+	productImagesPublic.GET("/all/:product_id", pth.HandleGetAllProductImages);
 	
 
 	// PRODUCT Categories
