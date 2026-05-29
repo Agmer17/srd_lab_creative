@@ -52,3 +52,13 @@ FROM reviews r
 JOIN products p ON p.id = r.product_id
 WHERE r.user_id = $1
 ORDER BY r.created_at DESC;
+
+-- name: ListAllReviewsForAdmin :many
+SELECT 
+    sqlc.embed(r),
+    sqlc.embed(u),
+    sqlc.embed(p)
+FROM reviews r
+JOIN users u ON u.id = r.user_id
+JOIN products p ON p.id = r.product_id
+ORDER BY r.created_at DESC;

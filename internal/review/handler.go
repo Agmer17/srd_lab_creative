@@ -99,7 +99,7 @@ func (h *ReviewHandler) PatchUpdateReviewShowStatus(c *gin.Context) {
 		return
 	}
 
-	data, updErr := h.svc.UpdateReviewShowStatus(c, id, req.Show)
+	data, updErr := h.svc.UpdateReviewShowStatus(c, id, *req.Show)
 	if updErr != nil {
 		c.JSON(updErr.Code, updErr)
 		return
@@ -124,6 +124,16 @@ func (h *ReviewHandler) HandleListMyReviews(c *gin.Context) {
 	c.JSON(200, shared.NewSuccessResponse(200, "My reviews successfully retrieved", data))
 }
 
+func (h *ReviewHandler) HandleListAllReviewsForAdmin(c *gin.Context) {
+	data, err := h.svc.ListAllReviewsForAdmin(c)
+	if err != nil {
+		c.JSON(err.Code, err)
+		return
+	}
+
+	c.JSON(200, shared.NewSuccessResponse(200, "All reviews successfully retrieved", data))
+}
+
 func (h *ReviewHandler) RegisterRoutes(r gin.IRouter) {
 	reviewApi := r.Group("/reviews")
 
@@ -141,5 +151,6 @@ func (h *ReviewHandler) RegisterRoutes(r gin.IRouter) {
 	adminRoutes := reviewApi.Group("/")
 	adminRoutes.Use(middleware.AuthMiddleware())
 	adminRoutes.Use(middleware.RoleMiddleware(middleware.RoleAdmin))
+	adminRoutes.GET("/admin/all", h.HandleListAllReviewsForAdmin)
 	adminRoutes.PATCH("/show-status/:id", h.PatchUpdateReviewShowStatus)
 }

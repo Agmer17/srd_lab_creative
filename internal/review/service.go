@@ -100,3 +100,11 @@ func (s *ReviewService) ListMyReviews(ctx context.Context, userID uuid.UUID) ([]
 	}
 	return reviews, nil
 }
+
+func (s *ReviewService) ListAllReviewsForAdmin(ctx context.Context) ([]model.Review, *shared.ErrorResponse) {
+	reviews, err := s.repo.ListAllReviewsForAdmin(ctx)
+	if err != nil {
+		return nil, shared.NewErrorResponse(500, "failed to get all reviews for admin")
+	}
+	return reviews, nil
+}

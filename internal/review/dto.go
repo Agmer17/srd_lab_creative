@@ -9,5 +9,5 @@ type CreateReviewRequest struct {
 }
 
 type UpdateReviewShowRequest struct {
-	Show bool `json:"show" binding:"required"`
+	Show *bool `json:"show" binding:"required"`
 }

@@ -99,3 +99,22 @@ func (r *ReviewRepository) ListReviewsByUser(ctx context.Context, userID uuid.UU
 	}
 	return model.MapListToReviewByUserModel(data), nil
 }
+
+func (r *ReviewRepository) ListAllReviewsForAdmin(ctx context.Context) ([]model.Review, error) {
+	data, err := r.db.ListAllReviewsForAdmin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	
+	// We need to map ListAllReviewsForAdminRow to model.Review
+	var result []model.Review
+	for _, row := range data {
+		review := model.MapToReviewModel(row.Review)
+		userModel := model.MapToUserModel(row.User)
+		productModel := model.MapToProductModel(row.Product)
+		review.User = &userModel
+		review.Product = &productModel
+		result = append(result, review)
+	}
+	return result, nil
+}

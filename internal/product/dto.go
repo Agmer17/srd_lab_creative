@@ -5,7 +5,7 @@ type createProductRequest struct{
 	Slug string `json:"slug" binding:"required,min=3"`
 	Description string `json:"description" binding:"omitempty,max=2000"`
 	Price float64 `json:"price" binding:"required,min=0"`
-	Status string `json:"status" binding:"required,oneof=active inactive"`
+	Status string `json:"status" binding:"required,oneof=active draft archived not_available"`
 	IsFeatured *bool `json:"is_featured" binding:"required"`
 }
 type updateProductRequest struct {
@@ -13,7 +13,7 @@ type updateProductRequest struct {
 	Slug        *string  `json:"slug" binding:"omitempty,min=3"`
 	Description *string  `json:"description" binding:"omitempty,max=2000"`
 	Price       *float64 `json:"price" binding:"omitempty,min=0"`
-	Status      *string  `json:"status" binding:"omitempty,oneof=active inactive"`
+	Status      *string  `json:"status" binding:"omitempty,oneof=active draft archived not_available"`
 	IsFeatured  *bool    `json:"is_featured" binding:"omitempty"`
 }
 

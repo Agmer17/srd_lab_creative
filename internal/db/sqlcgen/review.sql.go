@@ -80,6 +80,75 @@ func (q *Queries) GetReviewByOrderID(ctx context.Context, orderID uuid.UUID) (Re
 	return i, err
 }
 
+const listAllReviewsForAdmin = `-- name: ListAllReviewsForAdmin :many
+SELECT 
+    r.id, r.user_id, r.product_id, r.order_id, r.rating, r.comment, r.show, r.created_at, r.updated_at,
+    u.id, u.global_role, u.full_name, u.email, u.phone_number, u.profile_picture, u.gender, u.provider, u.provider_user_id, u.created_at, u.updated_at, u.deleted_at,
+    p.id, p.name, p.slug, p.description, p.price, p.status, p.is_featured, p.created_at, p.updated_at, p.deleted_at
+FROM reviews r
+JOIN users u ON u.id = r.user_id
+JOIN products p ON p.id = r.product_id
+ORDER BY r.created_at DESC
+`
+
+type ListAllReviewsForAdminRow struct {
+	Review  Review
+	User    User
+	Product Product
+}
+
+func (q *Queries) ListAllReviewsForAdmin(ctx context.Context) ([]ListAllReviewsForAdminRow, error) {
+	rows, err := q.db.Query(ctx, listAllReviewsForAdmin)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAllReviewsForAdminRow
+	for rows.Next() {
+		var i ListAllReviewsForAdminRow
+		if err := rows.Scan(
+			&i.Review.ID,
+			&i.Review.UserID,
+			&i.Review.ProductID,
+			&i.Review.OrderID,
+			&i.Review.Rating,
+			&i.Review.Comment,
+			&i.Review.Show,
+			&i.Review.CreatedAt,
+			&i.Review.UpdatedAt,
+			&i.User.ID,
+			&i.User.GlobalRole,
+			&i.User.FullName,
+			&i.User.Email,
+			&i.User.PhoneNumber,
+			&i.User.ProfilePicture,
+			&i.User.Gender,
+			&i.User.Provider,
+			&i.User.ProviderUserID,
+			&i.User.CreatedAt,
+			&i.User.UpdatedAt,
+			&i.User.DeletedAt,
+			&i.Product.ID,
+			&i.Product.Name,
+			&i.Product.Slug,
+			&i.Product.Description,
+			&i.Product.Price,
+			&i.Product.Status,
+			&i.Product.IsFeatured,
+			&i.Product.CreatedAt,
+			&i.Product.UpdatedAt,
+			&i.Product.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listFeaturedReviews = `-- name: ListFeaturedReviews :many
 SELECT 
     r.id, r.user_id, r.product_id, r.order_id, r.rating, r.comment, r.show, r.created_at, r.updated_at,
