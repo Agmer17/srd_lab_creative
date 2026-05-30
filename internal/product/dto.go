@@ -20,7 +20,7 @@ type updateProductRequest struct {
 
 type UpdateProductImageSort struct{
 	ImageId string `json:"image_id" binding:"required,uuid"`
-	SortOrder int `json:"sort_order" binding:"required,min=0"`
+	SortOrder int `json:"sort_order" binding:"min=0"`
 }
 
 type updateProductImageRequest struct{
